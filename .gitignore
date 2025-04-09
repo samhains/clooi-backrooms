@@ -60,7 +60,7 @@ cmake-build-*/
 
 # IntelliJ
 out/
-
+settings.js.*
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
@@ -201,7 +201,7 @@ dist
 .pnp.*
 
 # node-chatgpt-api
-settings.js
+
 test.js
 *.test.js
 *.cast

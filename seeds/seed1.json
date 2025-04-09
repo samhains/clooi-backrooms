@@ -1,0 +1,12 @@
+{
+    "messages": [
+      {
+        "role": "user",
+        "message": "Hello, can you help me with something?"
+      },
+      {
+        "role": "assistant",
+        "message": "Of course! I'd be happy to help. What can I assist you with?"
+      }
+    ]
+  }

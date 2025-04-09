@@ -1,7 +1,7 @@
-import ChatGPTClient from '../src/ChatGPTClient.js';
 import BingAIClient from '../src/BingAIClient.js';
-import InfrastructClient from '../src/InfrastructClient.js';
+import ChatGPTClient from '../src/ChatGPTClient.js';
 import ClaudeClient from '../src/ClaudeClient.js';
+import InfrastructClient from '../src/InfrastructClient.js';
 import OllamaClient from '../src/OllamaClient.js';
 import OpenRouterClient from '../src/OpenRouterClient.js';
 
@@ -192,18 +192,7 @@ const settings = {
 export function getClientSettings(clientToUse, settings) {
     let clientOptions;
     switch (clientToUse) {
-        case 'bing':
-            clientOptions = {
-                ...settings.bingAiClient,
-                ...settings.cliOptions.bingOptions,
-            };
-            break;
-        case 'infrastruct':
-            clientOptions = {
-                ...settings.infrastructClient,
-                ...settings.cliOptions.infrastructOptions,
-            };
-            break;
+       
         case 'claude':
             clientOptions = {
                 ...settings.claudeClient,

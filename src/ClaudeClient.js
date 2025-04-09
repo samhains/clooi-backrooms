@@ -1,36 +1,10 @@
+import { MODEL_INFO } from '../modelPresets.js';
 import ChatClient from './ChatClient.js';
 
-const CLAUDE_MODEL_INFO = {
-    default: {
-        contextLength: 100000,
-        vision: true,
-        maxResponseTokens: 10000,
-    },
-    'claude-3-opus-20240229': {
-        contextLength: 100000,
-        vision: true,
-        maxResponseTokens: 10000,
-    },
-    'claude-3-sonnet-20240229': {
-        contextLength: 100000,
-        vision: true,
-        maxResponseTokens: 10000,
-    },
-    'claude-3-haiku-20240307': {
-        contextLength: 100000,
-        vision: true,
-        maxResponseTokens: 10000,
-    },
-    'claude-3-sonnet-20240229-steering-preview': {
-        contextLength: 100000,
-        vision: true,
-        maxResponseTokens: 10000,
-    },
-    'claude-3-5-sonnet-20240620': {
-        contextLength: 100000,
-        vision: true,
-        maxResponseTokens: 10000,
-    },
+const CLAUDE_DEFAULT_MODEL_OPTIONS = {
+    temperature: 1,
+    stream: true,
+    max_tokens: 4096,
 };
 
 const CLAUDE_PARTICIPANTS = {
@@ -41,13 +15,6 @@ const CLAUDE_PARTICIPANTS = {
     },
 };
 
-const CLAUDE_DEFAULT_MODEL_OPTIONS = {
-    model: 'claude-3-opus-20240229',
-    max_tokens: 4096,
-    temperature: 1,
-    stream: true,
-};
-
 export default class ClaudeClient extends ChatClient {
     constructor(options = {}) {
         options.cache.namespace = options.cache.namespace || 'claude';
@@ -56,9 +23,31 @@ export default class ClaudeClient extends ChatClient {
         this.completionsUrl = 'https://api.anthropic.com/v1/messages';
         this.modelOptions = CLAUDE_DEFAULT_MODEL_OPTIONS;
         this.participants = CLAUDE_PARTICIPANTS;
-        this.modelInfo = CLAUDE_MODEL_INFO;
-        this.n = 1;
+
         this.setOptions(options);
+    }
+
+    getModelInfo(modelName) {
+        // Find the model config in our centralized MODEL_INFO
+        const modelConfig = Object.values(MODEL_INFO).find(m => 
+            m.company === 'anthropic' && m.apiName === modelName
+        );
+        
+        if (!modelConfig) {
+            return {
+                contextLength: 100000,  // default fallback values
+                vision: false,
+                json: false,
+                maxResponseTokens: 4096,
+            };
+        }
+
+        return {
+            contextLength: modelConfig.contextLength,
+            vision: modelConfig.vision,
+            json: modelConfig.json,
+            maxResponseTokens: modelConfig.maxResponseTokens,
+        };
     }
 
     getHeaders() {

@@ -1,31 +1,30 @@
 #!/usr/bin/env node
-import fs from 'fs';
-import { pathToFileURL } from 'url';
-import { KeyvFile } from 'keyv-file';
-import { spawn } from 'child_process';
 import boxen from 'boxen';
 import chalk from 'chalk';
-import { writeFile, readFile } from 'fs/promises';
-import { existsSync, realpathSync } from 'fs';
-import { unlink } from 'fs/promises';
+import { spawn } from 'child_process';
+import fs, { existsSync, realpathSync } from 'fs';
+import { readFile, unlink, writeFile } from 'fs/promises';
+import { KeyvFile } from 'keyv-file';
+import { pathToFileURL } from 'url';
 
 
 import chokidar from 'chokidar';
 
-import ora from 'ora';
 import clipboard from 'clipboardy';
+import crypto from 'crypto';
 import inquirer from 'inquirer';
 import inquirerAutocompletePrompt from 'inquirer-autocomplete-prompt';
-import crypto from 'crypto';
-import { getClient, getClientSettings } from './util.js';
-import { getCid, savedStatesByConversation, getSavedIds } from '../src/cacheUtil.js';
+import ora from 'ora';
+import { MODEL_INFO, getClientConfig, getModelConfig } from '../modelPresets.js';
+import { getCid, getSavedIds, savedStatesByConversation } from '../src/cacheUtil.js';
 import {
-    getMessagesForConversation,
     getChildren,
-    getSiblings,
-    getSiblingIndex,
+    getMessagesForConversation,
     getParent,
+    getSiblingIndex,
+    getSiblings,
 } from '../src/conversation.js';
+import { getClient, getClientSettings } from './util.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const pathToSettings = arg?.split('=')[1] ?? './settings.js';
@@ -117,7 +116,7 @@ async function updateSettings(path) {
     // settings.bingAiClient.features.genImage = false;
 
     
-    clientToUse = settings.cliOptions?.clientToUse || settings.clientToUse || 'bing';
+    clientToUse = settings.cliOptions?.clientToUse || settings.clientToUse ;
     // console.log(settings)
 
     clientOptions = getClientSettings(clientToUse, settings);
@@ -323,6 +322,75 @@ let availableCommands = [
         command: async () => { showHistory(); return conversation(); },
     },
     {
+        name: '!system - View or change system prompt from contexts',
+        value: '!system',
+        usage: '!system [context_name]',
+        description: 'View available contexts or set system prompt from a context file.\n\t[context_name]: If provided, loads system prompt from contexts/[context_name].txt. If not provided, shows list of available contexts.',
+        command: async args => {
+            const contextsDir = './contexts';
+            
+            // Function to get available context files
+            const getContextFiles = () => {
+                try {
+                    return fs.readdirSync(contextsDir)
+                        .filter(file => file.endsWith('.txt'))
+                        .map(file => file.replace('.txt', ''));
+                } catch (error) {
+                    logError(`Error reading contexts directory: ${error.message}`);
+                    return [];
+                }
+            };
+
+            // If no context specified, show list of available contexts
+            if (args.length === 1) {
+                const contexts = getContextFiles();
+                if (contexts.length === 0) {
+                    logWarning('No context files found in ./contexts directory.');
+                    return conversation();
+                }
+
+                console.log(tryBoxen(contexts.join('\n'), {
+                    title: 'Available Contexts',
+                    padding: 0.7,
+                    margin: 1,
+                    borderColor: 'blue',
+                }));
+
+                // Show current system prompt if one is set
+                if (clientOptions.messageOptions.systemMessage) {
+                    console.log(systemMessageBox(clientOptions.messageOptions.systemMessage));
+                }
+                return conversation();
+            }
+
+            // Load specified context
+            const contextName = args[1];
+            const contextPath = `${contextsDir}/${contextName}.txt`;
+
+            try {
+                if (!fs.existsSync(contextPath)) {
+                    logError(`Context file not found: ${contextPath}`);
+                    return conversation();
+                }
+
+                const newPrompt = fs.readFileSync(contextPath, 'utf8').trim();
+                clientOptions.messageOptions.systemMessage = newPrompt;
+                // Remove any default greeting
+                if (clientOptions.messageOptions.content && 
+                    clientOptions.messageOptions.content.startsWith("Hello, how can I assist you today?")) {
+                    clientOptions.messageOptions.content = clientOptions.messageOptions.content
+                        .replace("Hello, how can I assist you today?", "").trim();
+                }
+                logSuccess(`Loaded system prompt from ${contextName}.txt`);
+                console.log(systemMessageBox(newPrompt));
+            } catch (error) {
+                logError(`Error loading context file: ${error.message}`);
+            }
+
+            return conversation();
+        },
+    },
+    {
         name: '!exit - Exit CLooI',
         value: '!exit',
         usage: '!exit',
@@ -381,6 +449,171 @@ let availableCommands = [
                 }
                 steeringFeatures["feat_34M_20240604_" + args[1]] = Number(amount);
             }
+            return conversation();
+        },
+    },
+    {
+        name: '!backrooms - Start a recursive dialogue between two AI instances',
+        value: '!backrooms',
+        usage: '!backrooms <model> <context>',
+        description: 'Start a recursive dialogue between the current AI and another instance.\n\t<model>: The model to use (e.g., "opus", "sonnet")\n\t<context>: The context file name from ./contexts/ (without .txt extension)',
+        command: async args => startBackroomsDialogue(args[1], args[2]),
+    },
+    {
+        name: '!model - Switch to a different model',
+        value: '!model',
+        usage: '!model [model_name]',
+        description: 'Switch to a different model.\n\t[model_name]: The name of the model to switch to (e.g., gpt-45, claude-3-sonnet). If not provided, shows available models.',
+        command: async args => {
+            if (!args[1]) {
+                const models = Object.keys(MODEL_INFO).map(model => 
+                    `${model} (${MODEL_INFO[model].displayName})`
+                );
+                console.log(tryBoxen(models.join('\n'), {
+                    title: 'Available Models',
+                    padding: 0.7,
+                    margin: 1,
+                    borderColor: 'blue',
+                }));
+                return conversation();
+            }
+
+            const newModel = args[1];
+            if (!MODEL_INFO[newModel]) {
+                logWarning(`Model "${newModel}" not found. Available models: ${Object.keys(MODEL_INFO).join(', ')}`);
+                return conversation();
+            }
+
+            // Update settings with new model
+            const modelConfig = getModelConfig(newModel);
+            settings.cliOptions.clientToUse = modelConfig.clientType;
+            
+            // Update model-specific options
+            if (modelConfig.company === 'anthropic') {
+                settings.cliOptions.claudeOptions = modelConfig.defaultOptions;
+            } else if (modelConfig.company === 'openai') {
+                settings.cliOptions.chatGptOptions = modelConfig.defaultOptions;
+            } else if (modelConfig.company === 'microsoft') {
+                settings.cliOptions.bingOptions = modelConfig.defaultOptions;
+            }
+
+            // Reinitialize client settings and client
+            clientToUse = modelConfig.clientType;
+            clientOptions = getClientSettings(clientToUse, settings);
+            client = getClient(clientToUse, settings);
+
+            // Convert message roles if there's an existing conversation
+            if (localConversation?.messages) {
+                localConversation.messages = localConversation.messages.map(msg => ({
+                    ...msg,
+                    role: convertRole(msg.role, modelConfig.company)
+                }));
+                await pushToCache();
+            }
+
+            logSuccess(`Switched to model: ${MODEL_INFO[newModel].displayName}`);
+            return conversation();
+        },
+    },
+    {
+        name: '!seed - Load a conversation from a seed file',
+        value: '!seed',
+        usage: '!seed [name]',
+        description: 'Load a conversation from a seed file in ./seeds directory.\n\t[name]: If provided, loads the specified seed file. If not provided, shows list of available seeds.',
+        command: async args => {
+            const seedsDir = './seeds';
+            
+            // Create seeds directory if it doesn't exist
+            if (!fs.existsSync(seedsDir)) {
+                fs.mkdirSync(seedsDir);
+            }
+
+            // Function to get available seed files
+            const getSeedFiles = () => {
+                try {
+                    return fs.readdirSync(seedsDir)
+                        .filter(file => file.endsWith('.json'))
+                        .map(file => file.replace('.json', ''));
+                } catch (error) {
+                    logError(`Error reading seeds directory: ${error.message}`);
+                    return [];
+                }
+            };
+
+            // If no seed specified, show list of available seeds
+            if (args.length === 1) {
+                const seeds = getSeedFiles();
+                if (seeds.length === 0) {
+                    logWarning('No seed files found in ./seeds directory.');
+                    return conversation();
+                }
+
+                console.log(tryBoxen(seeds.join('\n'), {
+                    title: 'Available Seeds',
+                    padding: 0.7,
+                    margin: 1,
+                    borderColor: 'blue',
+                }));
+                return conversation();
+            }
+
+            // Load specified seed
+            const seedName = args[1];
+            const seedPath = `${seedsDir}/${seedName}.json`;
+
+            try {
+                if (!fs.existsSync(seedPath)) {
+                    logError(`Seed file not found: ${seedPath}`);
+                    return conversation();
+                }
+
+                const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+                
+                // Validate seed structure
+                if (!seedData.messages || !Array.isArray(seedData.messages)) {
+                    throw new Error('Invalid seed file structure: missing messages array');
+                }
+
+                // Start new conversation with a unique ID
+                const conversationId = crypto.randomUUID();
+                
+                // Create conversation structure matching cache format
+                let parentMessageId = null;
+                const conversation = {
+                    messages: [],
+                    id: conversationId
+                };
+
+                // Process messages maintaining parent-child relationships
+                for (const msg of seedData.messages) {
+                    const messageId = crypto.randomUUID();
+                    const conversationMessage = {
+                        id: messageId,
+                        parentMessageId,
+                        message: msg.message,
+                        role: msg.role || (msg.author === client.names.bot.author ? client.names.bot.role : client.names.user.role),
+                        timestamp: new Date().toISOString()
+                    };
+                    conversation.messages.push(conversationMessage);
+                    parentMessageId = messageId;
+                }
+
+                // Store in cache
+                await client.conversationsCache.set(conversationId, conversation);
+                
+                // Set conversation data and load the conversation
+                await setConversationData({
+                    conversationId,
+                    parentMessageId: parentMessageId // Point to last message
+                });
+
+                logSuccess(`Loaded conversation seed from ${seedName}.json`);
+                showHistory();
+
+            } catch (error) {
+                logError(`Error loading seed file: ${error.message}`);
+            }
+
             return conversation();
         },
     },
@@ -500,12 +733,12 @@ async function generateMessage() {
                 steering: {
                     feature_levels: steeringFeatures
                 }
-            } : {}),
+            } : {})
         },
         {
             ...conversationData,
             ...clientOptions.messageOptions,
-        },
+        }
     );
 
     const {
@@ -1528,4 +1761,230 @@ function getHistory() {
     const messageHistory = getMessagesForConversation(localConversation.messages, conversationData.parentMessageId);
 
     return messageHistory;
+}
+
+function convertRole(role, company) {
+    // Convert to standard roles first
+    let standardRole = role.toLowerCase();
+    if (role === 'Claude' || role === 'Assistant' || role === 'Bing') {
+        standardRole = 'assistant';
+    }
+    
+    // Then convert to company-specific roles if needed
+    switch (company) {
+        case 'anthropic':
+            if (standardRole === 'assistant') return 'assistant';
+            if (standardRole === 'user') return 'user';
+            if (standardRole === 'system') return 'system';
+            break;
+        case 'openai':
+            if (standardRole === 'assistant') return 'assistant';
+            if (standardRole === 'user') return 'user';
+            if (standardRole === 'system') return 'system';
+            break;
+        case 'microsoft':
+            if (standardRole === 'assistant') return 'Bing';
+            if (standardRole === 'user') return 'user';
+            if (standardRole === 'system') return 'system';
+            break;
+    }
+    return standardRole;
+}
+
+async function generateBackroomsResponse(backroomsClient, options, userMessage, systemPrompt, modelConfig) {
+    const streamedMessages = {};
+    const status = {};
+    const eventLog = [];
+    const previewIdx = 0;
+
+    const spinnerPrefix = `Backrooms ${modelConfig.displayName} is typing...`;
+    const spinner = ora(spinnerPrefix);
+    spinner.prefixText = '\n   ';
+    spinner.start();
+
+    try {
+        const controller = new AbortController();
+        
+        // Build API parameters using the client's method
+        const apiParams = {
+            ...backroomsClient.buildApiParams(
+                backroomsClient.buildMessage(userMessage.content, backroomsClient.names.user.author),
+                [],
+                systemPrompt ? backroomsClient.buildMessage(systemPrompt, 'system') : null
+            ),
+            model: modelConfig.apiName
+        };
+
+        // Use the client's API call with proper streaming
+        const response = await backroomsClient.callAPI(
+            apiParams,
+            {
+                ...options.messageOptions,
+                abortController: controller,
+                onProgress: (diff, idx, data) => {
+                    if (diff) {
+                        if (!streamedMessages[idx]) {
+                            streamedMessages[idx] = '';
+                            status[idx] = 'streaming';
+                        }
+                        streamedMessages[idx] += diff;
+                        if (idx === previewIdx) {
+                            const output = aiMessageBox(replaceWhitespace(streamedMessages[idx].trim()));
+                            spinner.text = `${spinnerPrefix}\n${output}`;
+                        }
+                    }
+                    if (data) {
+                        eventLog.push(data);
+                    }
+                }
+            }
+        );
+
+        spinner.stop();
+        
+        // Handle response based on client type
+        if (response?.results?.response) {
+            return response.results.response;
+        } else if (response?.replies && response.replies[0]) {
+            return response.replies[0];
+        } else if (streamedMessages[previewIdx]) {
+            return streamedMessages[previewIdx];
+        } else if (typeof response === 'string') {
+            return response;
+        }
+        
+        throw new Error('No response received from API');
+    } catch (error) {
+        spinner.stop();
+        throw error;
+    }
+}
+
+async function startBackroomsDialogue(modelKey, contextName) {
+    if (!modelKey || !contextName) {
+        logError('Both model and context parameters are required.');
+        return conversation();
+    }
+
+    // Validate model exists in MODEL_INFO
+    if (!MODEL_INFO[modelKey]) {
+        logError(`Invalid model: ${modelKey}. Available models: ${Object.keys(MODEL_INFO).join(', ')}`);
+        return conversation();
+    }
+
+    // Load context file
+    const contextPath = `./contexts/${contextName}.txt`;
+    let systemPrompt;
+    try {
+        systemPrompt = fs.readFileSync(contextPath, 'utf8').trim();
+    } catch (error) {
+        logError(`Failed to load context file: ${contextPath}`);
+        return conversation();
+    }
+
+    // Create a new client instance for the second AI
+    const modelConfig = getModelConfig(modelKey);
+    const backroomsClient = getClient(modelConfig.clientType, settings);
+    const backroomsOptions = {
+        modelOptions: {
+            ...modelConfig.defaultOptions.modelOptions,
+            model: modelConfig.apiName
+        },
+        messageOptions: {
+            ...modelConfig.defaultOptions.messageOptions,
+            systemMessage: systemPrompt
+        }
+    };
+
+    // Start the recursive dialogue
+    let isDialogueActive = true;
+    let isGenerating = false;
+
+    // Handle Escape key to exit dialogue
+    const stdin = process.stdin;
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+
+    const escapeHandler = (key) => {
+        if (key === '\u001b') { // ESC key
+            isDialogueActive = false;
+            stdin.removeListener('data', escapeHandler);
+            stdin.setRawMode(false);
+            logSuccess('Ending backrooms dialogue...');
+        }
+    };
+
+    stdin.on('data', escapeHandler);
+
+    // Initialize conversation if needed
+    // if (!localConversation.messages || localConversation.messages.length === 0) {
+    //     const initialMessage = backroomsClient.buildMessage("Hello! How can I assist you today?", backroomsClient.names.user.author);
+    //     await concatMessages(initialMessage);
+    //     showHistory();
+    // }
+
+    // Start the dialogue loop
+    while (isDialogueActive) {
+        try {
+            if (isGenerating) continue;
+            isGenerating = true;
+
+            // Get current conversation history
+            const messageHistory = getHistory();
+            if (!messageHistory || messageHistory.length === 0) {
+                logError('No conversation history found.');
+                break;
+            }
+
+            // Convert history to a readable format for context
+            const historyContext = messageHistory.map(msg => 
+                `${msg.role}: ${msg.message}`
+            ).join('\n\n');
+
+            // Generate response from the backrooms AI
+            const userMessage = {
+                role: 'user',
+                content: `Here is the current conversation context:\n\n${historyContext}\n\nPlease continue the conversation naturally, responding to the last message.`
+            };
+
+            const backroomsResponse = await generateBackroomsResponse(
+                backroomsClient, 
+                backroomsOptions, 
+                userMessage, 
+                systemPrompt,
+                modelConfig
+            );
+            
+            if (!isDialogueActive) break;
+
+            // Add the backrooms response to the main conversation
+            await concatMessages(backroomsResponse);
+            showHistory();
+
+            // Wait for 2 seconds
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            if (!isDialogueActive) break;
+
+            // Generate response from the main AI and wait for it to complete
+            await generateMessage();
+            
+            isGenerating = false;
+            if (!isDialogueActive) break;
+
+            // Wait for 2 seconds before next iteration
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+        } catch (error) {
+            isGenerating = false;
+            logError(`Error in backrooms dialogue: ${error.message}`);
+            console.error('Full error:', error);
+            break;
+        }
+    }
+
+    // Clean up
+    stdin.removeListener('data', escapeHandler);
+    stdin.setRawMode(false);
+    return conversation();
 }
