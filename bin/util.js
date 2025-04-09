@@ -1,6 +1,7 @@
 import BingAIClient from '../src/BingAIClient.js';
 import ChatGPTClient from '../src/ChatGPTClient.js';
 import ClaudeClient from '../src/ClaudeClient.js';
+import GeminiClient from '../src/GeminiClient.js';
 import InfrastructClient from '../src/InfrastructClient.js';
 import OllamaClient from '../src/OllamaClient.js';
 import OpenRouterClient from '../src/OpenRouterClient.js';
@@ -24,6 +25,10 @@ const settings = {
             {
                 value: 'claude',
                 description: 'Anthropic API',
+            },
+            {
+                value: 'gemini',
+                description: 'Google Gemini API',
             },
             // {
             //     value: 'ollama',
@@ -61,29 +66,29 @@ const settings = {
         type: 'float',
         default: 1.0,
         description: 'Temperature for sampling responses.',
-        validFor: ['chatgpt', 'claude', 'infrastruct'],
+        validFor: ['chatgpt', 'claude', 'infrastruct', 'gemini'],
     },
     max_tokens: {
         type: 'int',
         default: 4096,
         description: 'Maximum tokens to generate at once.',
-        validFor: ['chatgpt', 'claude', 'infrastruct'],
+        validFor: ['chatgpt', 'claude', 'infrastruct', 'gemini'],
     },
     model: {
         type: 'string',
         default: 'claude-3-5-sonnet-20240620',
         description: 'Model to use for generation.',
-        validFor: ['chatgpt', 'claude', 'infrastruct'],
+        validFor: ['chatgpt', 'claude', 'infrastruct', 'gemini'],
     },
     apiKey: {
         type: 'string',
         description: 'API key',
-        validFor: ['chatgpt', 'claude', 'infrastruct'],
+        validFor: ['chatgpt', 'claude', 'infrastruct', 'gemini'],
     },
     completionsUrl: {
         type: 'string',
         description: 'API endpoint URL',
-        validFor: ['chatgpt', 'claude', 'infrastruct'],
+        validFor: ['chatgpt', 'claude', 'infrastruct', 'gemini'],
         advanced: true,
     },
     showSuggestions: {
@@ -211,6 +216,16 @@ export function getClientSettings(clientToUse, settings) {
                 ...settings.cliOptions.chatGptOptions,
             };
             break;
+        case 'gemini':
+            clientOptions = {
+                ...settings.geminiClient,
+                ...settings.cliOptions.geminiOptions,
+            };
+            // Ensure messageOptions exists for Gemini
+            clientOptions.messageOptions = clientOptions.messageOptions || {
+                systemMessage: '',
+            };
+            break;
         case 'openrouter':
             clientOptions = {
                 ...settings.openRouterClient,
@@ -236,6 +251,7 @@ export function getClient(clientToUse, settings) {
         case 'claude': client = new ClaudeClient(clientOptions); break;
         case 'ollama': client = new OllamaClient(clientOptions); break;
         case 'chatgpt': client = new ChatGPTClient(clientOptions); break;
+        case 'gemini': client = new GeminiClient(clientOptions); break;
         case 'openrouter': client = new OpenRouterClient(clientOptions); break;
         default: throw new Error('Invalid clientToUse setting.');
     }

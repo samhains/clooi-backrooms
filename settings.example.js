@@ -16,6 +16,7 @@ export default {
         // "infrastruct" (openai completions API)
         // "claude" (anthropic API)
         // "chatgpt" (openai chat API)
+        // "gemini" (google gemini API)
         // "ollama"
         // "openrouter"
         clientToUse: 'claude',
@@ -115,6 +116,17 @@ export default {
                 systemMessage: '', // fs.readFileSync('./contexts/youArePrometheus.txt', 'utf8'),
             },
         },
+        geminiOptions: {
+            modelOptions: {
+                model: 'gemini-flash',
+                temperature: 1,
+                stream: true,
+                maxOutputTokens: 8192,
+            },
+            messageOptions: {
+                systemMessage: '',
+            },
+        },
     },
     bingAiClient: {
         // Necessary for some people in different countries, e.g. China (https://cn.bing.com)
@@ -159,6 +171,10 @@ export default {
     },
     ollamaClient: {
     },
+    geminiClient: {
+        apiKey: process.env.GOOGLE_API_KEY || '',
+        debug: false,
+    },
     chatGptBrowserClient: {
         // (Optional) Support for a reverse proxy for the conversation endpoint (private API server).
         // Warning: This will expose your access token to a third party. Consider the risks before using this.
@@ -188,7 +204,7 @@ export default {
         perMessageClientOptionsWhitelist: {
             // The ability to switch clients using `clientOptions.clientToUse` will be disabled if `validClientsToUse` is not set.
             // To allow switching clients per message, you must set `validClientsToUse` to a non-empty array.
-            validClientsToUse: ['bing', 'chatgpt', 'chatgpt-browser', 'infrastruct', 'claude'], // values from possible `clientToUse` options above
+            validClientsToUse: ['bing', 'chatgpt', 'chatgpt-browser', 'infrastruct', 'claude', 'gemini'], // values from possible `clientToUse` options above
             // The Object key, e.g. "chatgpt", is a value from `validClientsToUse`.
             // If not set, ALL options will be ALLOWED to be changed. For example, `bing` is not defined in `perMessageClientOptionsWhitelist` above,
             // so all options for `bingAiClient` will be allowed to be changed.

@@ -1695,7 +1695,7 @@ function showHistory() {
     const boxes = historyBoxes();
     if (boxes) {
         conversationStart();
-        const { systemMessage } = clientOptions.messageOptions;
+        const systemMessage = clientOptions.messageOptions?.systemMessage;
         if (systemMessage) {
             console.log(systemMessageBox(systemMessage));
         }
@@ -1766,7 +1766,7 @@ function getHistory() {
 function convertRole(role, company) {
     // Convert to standard roles first
     let standardRole = role.toLowerCase();
-    if (role === 'Claude' || role === 'Assistant' || role === 'Bing') {
+    if (role === 'Claude' || role === 'Assistant' || role === 'Bing' || role === 'Gemini') {
         standardRole = 'assistant';
     }
     
@@ -1784,6 +1784,11 @@ function convertRole(role, company) {
             break;
         case 'microsoft':
             if (standardRole === 'assistant') return 'Bing';
+            if (standardRole === 'user') return 'user';
+            if (standardRole === 'system') return 'system';
+            break;
+        case 'google':
+            if (standardRole === 'assistant') return 'model'; // Gemini uses 'model' for assistant role
             if (standardRole === 'user') return 'user';
             if (standardRole === 'system') return 'system';
             break;
