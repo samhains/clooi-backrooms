@@ -291,6 +291,13 @@ let availableCommands = [
         command: async () => useEditor(),
     },
     {
+        name: '!set - Edit system prompt in multi-line editor',
+        value: '!set',
+        usage: '!set',
+        description: 'Open a multi-line editor to create or edit the system prompt. When changes are saved and the editor is closed, the system message will be updated.',
+        command: async () => useSystemEditor(),
+    },
+    {
         name: '!edit - Edit and fork the current message',
         value: '!edit',
         usage: '!edit',
@@ -1197,6 +1204,36 @@ async function useEditor() {
     return generateMessage();
 
     // return generateMessage(message);
+}
+
+async function useSystemEditor() {
+    // Get the current system message for initial editor content
+    const currentSystemMessage = clientOptions.messageOptions.systemMessage || '';
+    
+    let { message } = await inquirer.prompt([
+        {
+            type: 'editor',
+            name: 'message',
+            message: 'Edit system message:',
+            default: currentSystemMessage,
+            waitUserInput: false,
+        },
+    ]);
+    
+    message = message.trim();
+    if (!message) {
+        logWarning('System message is empty.');
+        return conversation();
+    }
+    
+    // Update the system message
+    clientOptions.messageOptions.systemMessage = message;
+    
+    // Display the updated system message
+    logSuccess('System message updated.');
+    console.log(systemMessageBox(message));
+    
+    return conversation();
 }
 
 async function editMessage(messageId, args = null) {
