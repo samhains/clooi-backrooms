@@ -325,7 +325,7 @@ let availableCommands = [
         name: '!system - View or change system prompt from contexts',
         value: '!system',
         usage: '!system [context_name]',
-        description: 'View available contexts or set system prompt from a context file.\n\t[context_name]: If provided, loads system prompt from contexts/[context_name].txt. If not provided, shows list of available contexts.',
+        description: 'View available contexts or set system prompt from a context file.\n\t[context_name]: If provided, loads system prompt from contexts/[context_name].txt. If not provided, shows an interactive selection of available contexts.',
         command: async args => {
             const contextsDir = './contexts';
             
@@ -341,7 +341,7 @@ let availableCommands = [
                 }
             };
 
-            // If no context specified, show list of available contexts
+            // If no context specified, show interactive selection of available contexts
             if (args.length === 1) {
                 const contexts = getContextFiles();
                 if (contexts.length === 0) {
@@ -349,18 +349,33 @@ let availableCommands = [
                     return conversation();
                 }
 
-                console.log(tryBoxen(contexts.join('\n'), {
-                    title: 'Available Contexts',
-                    padding: 0.7,
-                    margin: 1,
-                    borderColor: 'blue',
-                }));
-
                 // Show current system prompt if one is set
                 if (clientOptions.messageOptions.systemMessage) {
                     console.log(systemMessageBox(clientOptions.messageOptions.systemMessage));
                 }
-                return conversation();
+                
+                // Interactive selection
+                const contextChoices = contexts.map(context => ({
+                    name: context,
+                    value: context
+                }));
+                
+                const { selectedContext } = await inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'selectedContext',
+                        message: 'Select a context:',
+                        choices: contextChoices,
+                        pageSize: Math.min(contextChoices.length, 15)
+                    }
+                ]);
+                
+                if (!selectedContext) {
+                    return conversation();
+                }
+                
+                // Use the selected context
+                args[1] = selectedContext;
             }
 
             // Load specified context
@@ -463,19 +478,30 @@ let availableCommands = [
         name: '!model - Switch to a different model',
         value: '!model',
         usage: '!model [model_name]',
-        description: 'Switch to a different model.\n\t[model_name]: The name of the model to switch to (e.g., gpt-45, claude-3-sonnet). If not provided, shows available models.',
+        description: 'Switch to a different model.\n\t[model_name]: The name of the model to switch to (e.g., gpt-45, claude-3-sonnet). If not provided, shows an interactive selection of available models.',
         command: async args => {
             if (!args[1]) {
-                const models = Object.keys(MODEL_INFO).map(model => 
-                    `${model} (${MODEL_INFO[model].displayName})`
-                );
-                console.log(tryBoxen(models.join('\n'), {
-                    title: 'Available Models',
-                    padding: 0.7,
-                    margin: 1,
-                    borderColor: 'blue',
+                const modelChoices = Object.keys(MODEL_INFO).map(model => ({
+                    name: `${model} (${MODEL_INFO[model].displayName})`,
+                    value: model
                 }));
-                return conversation();
+                
+                const { selectedModel } = await inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'selectedModel',
+                        message: 'Select a model:',
+                        choices: modelChoices,
+                        pageSize: Math.min(modelChoices.length, 15)
+                    }
+                ]);
+                
+                if (!selectedModel) {
+                    return conversation();
+                }
+                
+                // Use the selected model
+                args[1] = selectedModel;
             }
 
             const newModel = args[1];
@@ -519,7 +545,7 @@ let availableCommands = [
         name: '!seed - Load a conversation from a seed file',
         value: '!seed',
         usage: '!seed [name]',
-        description: 'Load a conversation from a seed file in ./seeds directory.\n\t[name]: If provided, loads the specified seed file. If not provided, shows list of available seeds.',
+        description: 'Load a conversation from a seed file in ./seeds directory.\n\t[name]: If provided, loads the specified seed file. If not provided, shows an interactive selection of available seeds.',
         command: async args => {
             const seedsDir = './seeds';
             
@@ -540,7 +566,7 @@ let availableCommands = [
                 }
             };
 
-            // If no seed specified, show list of available seeds
+            // If no seed specified, show interactive selection of available seeds
             if (args.length === 1) {
                 const seeds = getSeedFiles();
                 if (seeds.length === 0) {
@@ -548,13 +574,28 @@ let availableCommands = [
                     return conversation();
                 }
 
-                console.log(tryBoxen(seeds.join('\n'), {
-                    title: 'Available Seeds',
-                    padding: 0.7,
-                    margin: 1,
-                    borderColor: 'blue',
+                // Interactive selection
+                const seedChoices = seeds.map(seed => ({
+                    name: seed,
+                    value: seed
                 }));
-                return conversation();
+                
+                const { selectedSeed } = await inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'selectedSeed',
+                        message: 'Select a seed:',
+                        choices: seedChoices,
+                        pageSize: Math.min(seedChoices.length, 15)
+                    }
+                ]);
+                
+                if (!selectedSeed) {
+                    return conversation();
+                }
+                
+                // Use the selected seed
+                args[1] = selectedSeed;
             }
 
             // Load specified seed
