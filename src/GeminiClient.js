@@ -2,14 +2,14 @@ import { MODEL_INFO } from "../modelPresets.js";
 import ChatClient from "./ChatClient.js";
 import "./fetch-polyfill.js";
 
-// const GEMINI_DEFAULT_MODEL_OPTIONS = {
-//   generationConfig: {
-//     temperature: 1.0,
-//     maxOutputTokens: 8192,
-//     topP: 0.95,
-//     topK: 40,
-//   },
-// };
+const GEMINI_DEFAULT_MODEL_OPTIONS = {
+  generationConfig: {
+    temperature: 1.0,
+    maxOutputTokens: 8192,
+    topP: 0.95,
+    topK: 40,
+  }
+};
 
 const GEMINI_PARTICIPANTS = {
   bot: {
@@ -19,15 +19,22 @@ const GEMINI_PARTICIPANTS = {
   },
 };
 
+// Gemini-specific model info that used to be in modelPresets.js
+const GEMINI_MODEL_INFO = {
+  contextLength: 30000,
+  vision: true,
+  json: true,
+  maxResponseTokens: 8192,
+};
+
 export default class GeminiClient extends ChatClient {
   constructor(options = {}) {
     options.cache = options.cache || {};
     options.cache.namespace = options.cache.namespace || "gemini";
     super(options);
     this.apiKey = process.env.GOOGLE_API_KEY || "";
-    this.completionsUrl =
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-    // this.modelOptions = GEMINI_DEFAULT_MODEL_OPTIONS;
+    this.completionsUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+    this.modelOptions = GEMINI_DEFAULT_MODEL_OPTIONS;
     this.participants = GEMINI_PARTICIPANTS;
     this.isChatGptModel = false;
 
@@ -35,46 +42,30 @@ export default class GeminiClient extends ChatClient {
   }
 
   getModelInfo(modelName) {
-    // Find the model config in our centralized MODEL_INFO
-    const modelConfig = Object.values(MODEL_INFO).find(
-      (m) => m.company === "google" && m.apiName === modelName
-    );
-
-    if (!modelConfig) {
-      return {
-        // contextLength: 30000,  // default fallback values
-        vision: true,
-        json: true,
-        // maxResponseTokens: 8192,
-      };
-    }
-
-    return {
-      //   contextLength: modelConfig.contextLength,
-      vision: modelConfig.vision,
-      json: modelConfig.json,
-      // maxResponseTokens: modelConfig.maxResponseTokens,
-    };
+    // Return Gemini-specific defaults
+    return GEMINI_MODEL_INFO;
   }
 
-  buildApiParams(
-    userMessage = null,
-    previousMessages = [],
-    systemMessage = null
-  ) {
+  buildApiParams(userMessage = null, previousMessages = [], systemMessage = null) {
     // Build a simple contents array matching Gemini's format
     const contents = [];
 
-    // Handle system message
+    // Handle system message as a user+model exchange
     if (systemMessage && systemMessage.text) {
       contents.push({
+        role: "user",
         parts: [{ text: `System instruction: ${systemMessage.text}` }],
+      });
+      contents.push({
+        role: "model",
+        parts: [{ text: "I'll follow these instructions." }],
       });
     }
 
     // Add previous messages
     for (const msg of previousMessages) {
       contents.push({
+        role: msg.author === "user" ? "user" : "model",
         parts: [{ text: msg.text }],
       });
     }
@@ -82,6 +73,7 @@ export default class GeminiClient extends ChatClient {
     // Add user message if provided
     if (userMessage && userMessage.text) {
       contents.push({
+        role: "user",
         parts: [{ text: userMessage.text }],
       });
     }
@@ -89,7 +81,7 @@ export default class GeminiClient extends ChatClient {
     // Return API parameters in the format expected by the Gemini API
     return {
       contents,
-      //   generationConfig: this.modelOptions.generationConfig,
+      generationConfig: this.modelOptions.generationConfig,
     };
   }
 
@@ -100,9 +92,12 @@ export default class GeminiClient extends ChatClient {
   }
 
   async callAPI(params, opts = {}) {
+    // Remove stream property if it exists to avoid API errors
+    const { stream, ...restParams } = params;
+    
     const modelOptions = {
       ...this.modelOptions,
-      ...params,
+      ...restParams,
     };
 
     if (typeof opts.onProgress !== "function") {
