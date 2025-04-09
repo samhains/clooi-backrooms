@@ -5,7 +5,7 @@ import { MODEL_INFO, getClientConfig, getModelConfig } from "./modelPresets.js";
 // Load environment variables from .env file
 dotenv.config();
 
-const selectedModel = "gemini-2-flash"; // Default model - Using full model name
+const selectedModel = "sonnet-37"; // Default model - Using full model name
 const modelConfig = getModelConfig(selectedModel);
 
 // Get default models for each client type

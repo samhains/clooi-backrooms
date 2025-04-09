@@ -221,10 +221,8 @@ export function getClientSettings(clientToUse, settings) {
                 ...settings.geminiClient,
                 ...settings.cliOptions.geminiOptions,
             };
-            // Ensure messageOptions exists for Gemini
-            clientOptions.messageOptions = clientOptions.messageOptions || {
-                systemMessage: '',
-            };
+            // Ensure messageOptions exists for Gemini but don't override systemMessage
+            clientOptions.messageOptions = clientOptions.messageOptions || {};
             break;
         case 'openrouter':
             clientOptions = {
@@ -235,6 +233,10 @@ export function getClientSettings(clientToUse, settings) {
         default:
             throw new Error('Invalid clientToUse setting.');
     }
+    
+    // Make sure messageOptions exists but don't override existing system message
+    clientOptions.messageOptions = clientOptions.messageOptions || {};
+    
     return clientOptions;
 
 }

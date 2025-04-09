@@ -164,9 +164,12 @@ export default class ChatClient {
             ...previousMessages,
         ];
         const messages = history.map(msg => this.toAPImessage(msg));
+        
+        const systemText = systemMessage?.text || null;
+        
         return {
             messages,
-            system: systemMessage?.text || null,
+            system: systemText,
         };
     }
 
@@ -194,7 +197,7 @@ export default class ChatClient {
             previousMessages,
             conversation,
         } = await this.buildConversationHistory(conversationId, parentMessageId);
-
+        
         if (typeof systemMessage === 'string' && systemMessage.length) {
             systemMessage = this.buildMessage(systemMessage, this.participants.system.author);
         }

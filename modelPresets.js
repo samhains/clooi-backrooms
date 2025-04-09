@@ -15,7 +15,6 @@ export const MODEL_INFO = {
         stream: true,
       },
       messageOptions: {
-        systemMessage: "",
         n: 2,
       },
     },
@@ -36,7 +35,7 @@ export const MODEL_INFO = {
         stream: true,
       },
       messageOptions: {
-        systemMessage: "",
+        // No default systemMessage - will be set by CLI
         n: 2,
       },
     },
@@ -57,7 +56,7 @@ export const MODEL_INFO = {
         stream: true,
       },
       messageOptions: {
-        systemMessage: "",
+        // No default systemMessage - will be set by CLI
         n: 2,
       },
     },
@@ -92,7 +91,11 @@ export const MODEL_INFO = {
     defaultOptions: {
       modelOptions: {
         model: "gemini-2.5-pro-preview-03-25",
-        stream: true,
+        // Removed stream parameter as it's not supported by Gemini API
+      },
+      messageOptions: {
+        // No default systemMessage - will be set by CLI
+        n: 1, 
       },
     },
   },
@@ -104,7 +107,11 @@ export const MODEL_INFO = {
     defaultOptions: {
       modelOptions: {
         model: "gemini-2.0-flash",
-        stream: true,
+        // Removed stream parameter as it's not supported by Gemini API
+      },
+      messageOptions: {
+        // No default systemMessage - will be set by CLI
+        n: 1,
       },
     },
   },
