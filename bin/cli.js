@@ -15,21 +15,21 @@ import inquirer from "inquirer";
 import inquirerAutocompletePrompt from "inquirer-autocomplete-prompt";
 import ora from "ora";
 import {
-  MODEL_INFO,
-  getClientConfig,
-  getModelConfig,
+    MODEL_INFO,
+    getClientConfig,
+    getModelConfig,
 } from "../modelPresets.js";
 import {
-  getCid,
-  getSavedIds,
-  savedStatesByConversation,
+    getCid,
+    getSavedIds,
+    savedStatesByConversation,
 } from "../src/cacheUtil.js";
 import {
-  getChildren,
-  getMessagesForConversation,
-  getParent,
-  getSiblingIndex,
-  getSiblings,
+    getChildren,
+    getMessagesForConversation,
+    getParent,
+    getSiblingIndex,
+    getSiblings,
 } from "../src/conversation.js";
 import { getClient, getClientSettings } from "./util.js";
 
@@ -1457,40 +1457,7 @@ async function useSystemEditor() {
   // Get the current system message for initial editor content
   let currentSystemMessage = "";
 
-  try {
-    // First check if we can determine the current system message from clientOptions
-    if (clientOptions?.messageOptions?.systemMessage) {
-      currentSystemMessage = clientOptions.messageOptions.systemMessage;
-    }
-    // Then check client-specific options in settings
-    else if (
-      clientToUse === "claude" &&
-      settings?.cliOptions?.claudeOptions?.systemMessage
-    ) {
-      console.log("HERE!!");
-      currentSystemMessage = settings.cliOptions.claudeOptions.systemMessage;
-    } else if (
-      clientToUse === "openai" &&
-      settings?.cliOptions?.chatGptOptions?.systemMessage
-    ) {
-      console.log("HERE!22!");
-      currentSystemMessage = settings.cliOptions.chatGptOptions.systemMessage;
-    } else if (
-      clientToUse === "gemini" &&
-      settings?.cliOptions?.geminiOptions?.systemMessage
-    ) {
-      console.log("HERE!44!");
-
-      currentSystemMessage = settings.cliOptions.geminiOptions.systemMessage;
-    }
-    // Fall back to checking direct system property
-    else if (clientOptions?.system) {
-      currentSystemMessage = clientOptions.system;
-    }
-  } catch (error) {
-    // If any error occurs, just use empty string
-    console.log(chalk.yellow("Could not retrieve current system message"));
-  }
+  
 
   let { message } = await inquirer.prompt([
     {
@@ -1507,50 +1474,12 @@ async function useSystemEditor() {
     logWarning("System message is empty.");
     return conversation();
   }
-
+  clientOptions.messageOptions.systemMessage = message;
+  // 2. Set the system property
+  clientOptions.system = message;
   // Update system message differently depending on client type
   // Since !system works for Claude but !set doesn't, let's mimic what !system does
 
-  if (clientToUse === "claude") {
-    // For Claude, simply set the messageOptions.systemMessage property, like !system does
-    clientOptions.messageOptions = clientOptions.messageOptions || {};
-    clientOptions.messageOptions.systemMessage = message;
-  } else {
-    // For all other clients (ChatGPT, Gemini), do the full update
-
-    // 1. Update client options
-    clientOptions.messageOptions = clientOptions.messageOptions || {};
-    clientOptions.messageOptions.systemMessage = message;
-
-    // 2. Set the system property
-    clientOptions.system = message;
-
-    // 3. Update the client's internal options directly
-    if (client) {
-      client.options = client.options || {};
-      client.options.system = message;
-
-      if (client.options.messageOptions) {
-        client.options.messageOptions.systemMessage = message;
-      }
-    }
-
-    // 4. Update client-specific options in settings
-    if (!settings.cliOptions) settings.cliOptions = {};
-
-    // For OpenAI/ChatGPT
-    if (clientToUse === "openai") {
-      if (!settings.cliOptions.chatGptOptions)
-        settings.cliOptions.chatGptOptions = {};
-      settings.cliOptions.chatGptOptions.systemMessage = message;
-    }
-    // For Gemini
-    else if (clientToUse === "gemini") {
-      if (!settings.cliOptions.geminiOptions)
-        settings.cliOptions.geminiOptions = {};
-      settings.cliOptions.geminiOptions.systemMessage = message;
-    }
-  }
 
   // Display the updated system message
   console.log(systemMessageBox(message));
