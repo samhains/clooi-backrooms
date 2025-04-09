@@ -67,38 +67,23 @@ export const MODEL_INFO = {
     displayName: "GPT 4.5-preview",
     company: "openai",
     clientType: "chatgpt",
-    contextLength: 128000,
-    vision: true,
-    json: true,
-    maxResponseTokens: 4096,
     defaultOptions: {
       modelOptions: {
-        temperature: 1,
-        max_tokens: 2048,
-        n: 3,
         stream: true,
       },
     },
   },
   "gpt-4o": {
     apiName: "chatgpt-4o-latest",
-    displayName: "GPT 4.5-preview",
+    displayName: "GPT-4o",
     company: "openai",
     clientType: "chatgpt",
-    contextLength: 128000,
-    vision: true,
-    json: true,
-    maxResponseTokens: 4096,
     defaultOptions: {
       modelOptions: {
-        temperature: 1,
-        max_tokens: 2048,
-        n: 3,
         stream: true,
       },
     },
   },
-
   "gemini-25-pro": {
     apiName: "gemini-2.5-pro-preview-03-25",
     displayName: "Gemini 2.5 Pro Preview",
@@ -111,7 +96,6 @@ export const MODEL_INFO = {
       },
     },
   },
-
   "gemini-2-flash": {
     apiName: "gemini-2.0-flash",
     displayName: "Gemini 2.0 Flash",
@@ -170,7 +154,6 @@ export function getClientConfig(modelName) {
         completionsUrl: `https://generativelanguage.googleapis.com/v1beta/models/${config.apiName}:generateContent`,
         debug: false,
       };
-    // Add other cases as needed
     default:
       throw new Error(`Unknown company: ${config.company}`);
   }
