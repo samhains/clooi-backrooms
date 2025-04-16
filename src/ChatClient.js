@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 
-import Keyv from 'keyv';
+import { encoding_for_model as encodingForModel, get_encoding as getEncoding } from '@dqbd/tiktoken';
 import { fetchEventSource } from '@waylaidwanderer/fetch-event-source';
+import Keyv from 'keyv';
 import { Agent } from 'undici';
 import { getMessagesForConversation } from './conversation.js';
-import { encoding_for_model as encodingForModel, get_encoding as getEncoding } from '@dqbd/tiktoken';
 
 import * as conversions from './typeConversionUtil.js';
 

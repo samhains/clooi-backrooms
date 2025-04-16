@@ -106,6 +106,7 @@ export default class ClaudeClient extends ChatClient {
     previousMessages = [],
     systemMessage = null
   ) {
+
     // const maxHistoryLength = 20;
     const { messages: history, system } = super.buildApiParams(
       userMessage,
