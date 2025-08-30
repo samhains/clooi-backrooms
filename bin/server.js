@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import fastify from 'fastify';
 import cors from '@fastify/cors';
 import { FastifySSEPlugin } from '@waylaidwanderer/fastify-sse-v2';

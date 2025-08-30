@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
