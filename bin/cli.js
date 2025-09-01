@@ -27,6 +27,7 @@ import {
     getSiblingIndex,
     getParent,
 } from '../src/conversation.js';
+import path from 'path';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const pathToSettings = arg?.split('=')[1] ?? './settings.js';
@@ -179,6 +180,13 @@ let availableCommands = [
         usage: '!help [command] | <command> --help',
         description: 'Show command documentation.\n\t[command]: If provided, show the documentation for that command, otherwise shows documentation for all commands.',
         command: async args => showCommandDocumentation(args[1]),
+    },
+    {
+        name: '!import - Import a Backrooms log',
+        value: '!import',
+        usage: '!import [path]',
+        description: 'Import a .txt transcript by path. If not provided, opens a picker in the import/ folder.',
+        command: async args => importBackroomsLogFlow(args[1]),
     },
     {
         name: '!mu - Regenerate last response',
@@ -903,6 +911,113 @@ async function addMessages(newMessages = null) {
     await concatMessages(newMessages);
     showHistory();
     return conversation();
+}
+
+// -------- Backrooms Logs Import --------
+
+function getBackroomsDir() {
+    // Resolve from project root
+    return path.resolve('./import');
+}
+
+function getBackroomsFiles() {
+    const dir = getBackroomsDir();
+    if (!fs.existsSync(dir)) {
+        return [];
+    }
+    const entries = fs.readdirSync(dir)
+        .filter(f => f.endsWith('.txt'))
+        .map(name => {
+            const full = path.join(dir, name);
+            const stat = fs.statSync(full);
+            return { name, full, mtime: stat.mtimeMs };
+        })
+        .sort((a, b) => b.mtime - a.mtime);
+    return entries;
+}
+
+function parseBackroomsLog(content) {
+    // Parse sections delimited by lines like: "### Hermes 405B 1 ###"
+    const lines = content.split(/\r?\n/);
+    const headerRegex = /^###\s+(.+?)\s+###\s*$/;
+    let currentHeader = null;
+    let buffer = [];
+    const messages = [];
+
+    function flush() {
+        if (!currentHeader) return;
+        const text = buffer.join('\n').trim();
+        buffer = [];
+        if (!text) return;
+        // Heuristic: header with trailing ' 1' => user, ' 2' => assistant
+        const isOne = /(^|\s)1(\s|$)/.test(currentHeader);
+        const isTwo = /(^|\s)2(\s|$)/.test(currentHeader);
+        let author = client.names.user.author;
+        if (isTwo) author = client.names.bot.author;
+        else if (isOne) author = client.names.user.author;
+        messages.push({ author, text, type: 'message' });
+    }
+
+    for (const line of lines) {
+        const m = line.match(headerRegex);
+        if (m) {
+            // New section
+            flush();
+            currentHeader = m[1];
+        } else {
+            buffer.push(line);
+        }
+    }
+    flush();
+    return messages;
+}
+
+async function importBackroomsLogFlow(targetPath = null) {
+    try {
+        let filePath = targetPath;
+        if (!filePath) {
+            const files = getBackroomsFiles();
+            if (files.length === 0) {
+                logWarning('No .txt files found in import/.');
+                return conversation();
+            }
+            const { chosen } = await inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'chosen',
+                    message: 'Select a Backrooms log to import:',
+                    choices: files.map(f => ({ name: `${f.name}`, value: f.full })),
+                    pageSize: Math.min(files.length * 2, 20),
+                },
+            ]);
+            filePath = chosen;
+        }
+        if (!fs.existsSync(filePath)) {
+            logWarning('File not found.');
+            return conversation();
+        }
+
+        const raw = fs.readFileSync(filePath, 'utf8');
+        const msgs = parseBackroomsLog(raw);
+        if (!msgs.length) {
+            logWarning('Could not parse any messages from the selected log.');
+            return conversation();
+        }
+
+        // Ensure there is a conversation id
+        if (!getConversationId()) {
+            const newId = crypto.randomUUID();
+            await setConversationData({ conversationId: newId, parentMessageId: null });
+        }
+
+        await concatMessages(msgs);
+        logSuccess(`Imported ${msgs.length} messages from ${path.basename(filePath)}.`);
+        showHistory();
+        return conversation();
+    } catch (err) {
+        logError(`Import failed: ${err?.message || err}`);
+        return conversation();
+    }
 }
 
 async function useEditor() {

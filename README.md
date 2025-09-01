@@ -95,6 +95,8 @@ The `!help` command will show a list of commands and their descriptions. You can
 - !export [filename]: Export conversation tree to JSON.
     - [filename]: If provided, export the conversation tree to a file with that name, otherwise a prompt will appear to choose a filename.
 
+- !import [path]: Import a specific transcript by path (defaults to opening a picker under `import/`).
+
 - !open <id\>: Load a saved conversation by id.
     - <id\>: The id of the conversation to load.
 
@@ -301,4 +303,3 @@ if (message.event === 'error') {
 #### Notes
 - Method 1 is simple, but Time to First Byte (TTFB) is long.
 - Method 2 uses a non-standard implementation of [server-sent event API](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events); you should import `fetch-event-source` first and use `POST` method.
-
