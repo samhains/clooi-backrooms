@@ -140,11 +140,7 @@ async function loadSettings() {
 
     responseData = {};
     
-    if (clientToUse === 'bing') {
-        console.log(tryBoxen('Welcome to the Bingleton Backrooms CLooI', {
-            title: '😊', padding: 0.7, margin: 1, titleAlignment: 'center', borderStyle: 'arrow', borderColor: 'gray',
-        }));
-    } else if (clientToUse === 'claude') {
+    if (clientToUse === 'claude') {
         const claudeAscii = fs.readFileSync('./contexts/claudeLoomAscii.txt', 'utf8');
         // console.log(claudeAscii);
         console.log(tryBoxen(claudeAscii, {
@@ -1237,12 +1233,10 @@ function showHistory() {
             console.log(systemMessageBox(systemMessage));
         }
         let suggestions = '';
-        if (clientToUse === 'bing' && settings.cliOptions?.showSuggestions) {
-            const targetMessage = getMessageByIndex();
-            const suggestedUserMessages = client.constructor.getUserSuggestions(targetMessage.details?.message);
-            if (suggestedUserMessages && suggestedUserMessages.length > 0) {
-                suggestions = `\n${suggestionsBoxes(suggestedUserMessages)}`;
-            }
+        const targetMessage = getMessageByIndex();
+        const suggestedUserMessages = client.constructor.getUserSuggestions(targetMessage?.details?.message);
+        if (suggestedUserMessages && suggestedUserMessages.length > 0) {
+            suggestions = `\n${suggestionsBoxes(suggestedUserMessages)}`;
         }
         console.log(`${boxes}${suggestions}`);
     }

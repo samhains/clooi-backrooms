@@ -25,25 +25,20 @@
   "keywords": [
     "api",
     "cli",
-    "bing",
     "api-server",
     "openai",
     "api-rest",
     "gpt",
-    "bing-api",
-    "bing-search",
     "gpt-3",
     "openai-api",
     "gpt-4",
     "chatgpt",
-    "chatgpt-api",
-    "bing-chat"
+    "chatgpt-api"
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.4.4",
     "@dqbd/tiktoken": "^1.0.2",
     "@fastify/cors": "^8.2.0",
-    "@timefox/bic-sydney": "^1.1.4",
     "@waylaidwanderer/fastify-sse-v2": "^3.1.0",
     "@waylaidwanderer/fetch-event-source": "^3.0.1",
     "boxen": "^7.0.1",
