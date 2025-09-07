@@ -3,6 +3,7 @@ import fsp from 'fs/promises';
 import path from 'path';
 import { getClient, getClientSettings } from '../cli/util.js';
 import { createSessionManager } from '../utils/sessionEngine.js';
+import { getMessagesForConversation } from '../utils/conversation.js';
 
 export function registerDreamSim(server, settings) {
   const clientToUse = settings.apiOptions?.clientToUse || settings.clientToUse || 'openrouter';
@@ -81,6 +82,25 @@ export function registerDreamSim(server, settings) {
       reply.send(file);
     } catch (e) {
       reply.code(404).send('Not found');
+    }
+  });
+
+  // Minimal history endpoint: returns linear path to current cursor
+  server.get('/v1/dreamsim/history', async (request, reply) => {
+    const { sessionId: qid } = request.query || {};
+    const sessionId = qid || 'local';
+    try {
+      const { conversationId, cursorId, messages } = await manager.getHistory(sessionId);
+      const path = getMessagesForConversation(messages, cursorId).map(m => ({
+        id: m.id,
+        parentMessageId: m.parentMessageId,
+        role: m.role,
+        message: m.message,
+      }));
+      reply.send({ conversationId, cursorId, path });
+    } catch (e) {
+      reply.code(500).send({ error: 'Failed to fetch history' });
+      if (settings.apiOptions?.debug) console.error(e);
     }
   });
 }

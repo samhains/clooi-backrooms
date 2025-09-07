@@ -32,8 +32,14 @@ function getSessionId() {
 }
 
 async function streamLine(input) {
-  // Echo locally
+  // Echo locally on its own line
   appendLine(`$ ${input}`);
+
+  // Create a fresh output line for the incoming stream
+  const out = document.createElement('div');
+  out.className = 'line';
+  term.appendChild(out);
+  term.scrollTop = term.scrollHeight;
 
   const res = await fetch(`/v1/dreamsim/stream?sessionId=${encodeURIComponent(getSessionId())}`, {
     method: 'POST',
@@ -41,7 +47,7 @@ async function streamLine(input) {
     body: JSON.stringify({ input }),
   });
   if (!res.ok || !res.body) {
-    appendLine(`[error] HTTP ${res.status}`);
+    out.textContent += `[error] HTTP ${res.status}`;
     return;
   }
   const reader = res.body.getReader();
@@ -49,7 +55,37 @@ async function streamLine(input) {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    appendToken(decoder.decode(value));
+    out.textContent += decoder.decode(value);
+    term.scrollTop = term.scrollHeight;
+  }
+
+  // After a rewind command, print a minimal history summary
+  if (input.startsWith('!rw')) {
+    await showHistory();
+  }
+}
+
+function truncate(s, n = 120) {
+  if (!s) return '';
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+async function showHistory() {
+  try {
+    const res = await fetch(`/v1/dreamsim/history?sessionId=${encodeURIComponent(getSessionId())}`);
+    if (!res.ok) {
+      appendLine(`[error] history HTTP ${res.status}`);
+      return;
+    }
+    const data = await res.json();
+    const { cursorId, path } = data || {};
+    appendLine('— History to cursor —');
+    path.forEach((m, idx) => {
+      const marker = (m.id === cursorId) ? '*' : ' ';
+      appendLine(`${marker}[${idx}] ${m.role}: ${truncate(m.message)}`);
+    });
+  } catch (e) {
+    appendLine(`[error] history ${e?.message || e}`);
   }
 }
 
@@ -63,4 +99,3 @@ cmd.addEventListener('keydown', (e) => {
 });
 
 appendLine('Welcome to DreamSim. Type a dream to begin, or !rw -1 to rewind.');
-
