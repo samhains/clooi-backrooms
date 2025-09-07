@@ -59,9 +59,9 @@ async function streamLine(input) {
     term.scrollTop = term.scrollHeight;
   }
 
-  // After a rewind command, print a minimal history summary
+  // After a rewind command, re-render conversation to reflect new cursor
   if (input.startsWith('!rw')) {
-    await showHistory();
+    await renderConversation();
   }
 }
 
@@ -70,7 +70,7 @@ function truncate(s, n = 120) {
   return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
-async function showHistory() {
+async function renderConversation() {
   try {
     const res = await fetch(`/v1/dreamsim/history?sessionId=${encodeURIComponent(getSessionId())}`);
     if (!res.ok) {
@@ -79,11 +79,17 @@ async function showHistory() {
     }
     const data = await res.json();
     const { cursorId, path } = data || {};
-    appendLine('— History to cursor —');
-    path.forEach((m, idx) => {
-      const marker = (m.id === cursorId) ? '*' : ' ';
-      appendLine(`${marker}[${idx}] ${m.role}: ${truncate(m.message)}`);
+    // Clear terminal and rewrite full conversation path
+    term.innerHTML = '';
+    appendLine('Conversation (to cursor)');
+    appendLine('');
+    path.forEach((m) => {
+      appendLine(`${m.role}:`);
+      // Render multi-line content
+      (m.message || '').split('\n').forEach(line => appendLine('  ' + line));
+      appendLine('');
     });
+    appendLine(`Cursor: ${cursorId}`);
   } catch (e) {
     appendLine(`[error] history ${e?.message || e}`);
   }
