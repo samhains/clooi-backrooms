@@ -4,41 +4,12 @@ import Keyv from 'keyv';
 import { fetchEventSource } from '@waylaidwanderer/fetch-event-source';
 import { Agent } from 'undici';
 import { getMessagesForConversation } from '../conversation.js';
+import { DEFAULT_API_MESSAGE_SCHEMA, DEFAULT_MODEL_INFO, DEFAULT_PARTICIPANTS } from './constants.js';
+import { getTokenizer as getTokenizerImpl } from './tokenizer.js';
 import { encoding_for_model as encodingForModel, get_encoding as getEncoding } from '@dqbd/tiktoken';
-
 import * as conversions from '../typeConversionUtil.js';
 
-const DEFAULT_MODEL_INFO = {
-    default: {
-        contextLength: 8192,
-        maxResponseTokens: 4096,
-    },
-};
-
-const DEFAULT_PARTICIPANTS = {
-    user: {
-        display: 'User',
-        author: 'user',
-        defaultMessageType: 'message',
-    },
-    bot: {
-        display: 'Assistant',
-        author: 'assistant',
-        defaultMessageType: 'message',
-    },
-    system: {
-        display: 'System',
-        author: 'system',
-        defaultMessageType: 'message',
-    },
-};
-
-const DEFAULT_API_MESSAGE_SCHEMA = {
-    author: 'role',
-    text: 'content',
-};
-
-const tokenizersCache = {};
+// constants and tokenizer cache moved to dedicated modules
 
 export default class ChatClient {
     constructor(options) {
@@ -577,17 +548,7 @@ export default class ChatClient {
     }
 
     static getTokenizer(encoding, isModelName = false, extendSpecialTokens = {}) {
-        if (tokenizersCache[encoding]) {
-            return tokenizersCache[encoding];
-        }
-        let tokenizer;
-        if (isModelName) {
-            tokenizer = encodingForModel(encoding, extendSpecialTokens);
-        } else {
-            tokenizer = getEncoding(encoding, extendSpecialTokens);
-        }
-        tokenizersCache[encoding] = tokenizer;
-        return tokenizer;
+        return getTokenizerImpl(encoding, isModelName, extendSpecialTokens);
     }
 
     getTokenCount(text) {
@@ -598,4 +559,3 @@ export default class ChatClient {
         return message?.suggestedResponses || null;
     }
 }
-

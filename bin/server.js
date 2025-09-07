@@ -8,6 +8,7 @@ import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
 import { getClient } from './util.js';
 import { on } from 'events';
+import { nextTick, filterClientOptions } from '../src/server/utils.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const path = arg?.split('=')[1] ?? './settings.js';
@@ -160,63 +161,4 @@ server.listen({
     }
 });
 
-function nextTick() {
-    return new Promise(resolve => setTimeout(resolve, 0));
-}
-
-/**
- * Filter objects to only include whitelisted properties set in
- * `settings.js` > `apiOptions.perMessageClientOptionsWhitelist`.
- * Returns original object if no whitelist is set.
- * @param {*} inputOptions
- * @param clientToUseForMessage
- */
-function filterClientOptions(inputOptions, clientToUseForMessage) {
-    if (!inputOptions || !perMessageClientOptionsWhitelist) {
-        return null;
-    }
-
-    // If inputOptions.clientToUse is set and is in the whitelist, use it instead of the default
-    if (
-        perMessageClientOptionsWhitelist.validClientsToUse
-        && inputOptions.clientToUse
-        && perMessageClientOptionsWhitelist.validClientsToUse.includes(inputOptions.clientToUse)
-    ) {
-        clientToUseForMessage = inputOptions.clientToUse;
-    } else {
-        inputOptions.clientToUse = clientToUseForMessage;
-    }
-
-    const whitelist = perMessageClientOptionsWhitelist[clientToUseForMessage];
-    if (!whitelist) {
-        // No whitelist, return all options
-        return inputOptions;
-    }
-
-    const outputOptions = {
-        clientToUse: clientToUseForMessage,
-    };
-
-    for (const property of Object.keys(inputOptions)) {
-        const allowed = whitelist.includes(property);
-
-        if (!allowed && typeof inputOptions[property] === 'object') {
-            // Check for nested properties
-            for (const nestedProp of Object.keys(inputOptions[property])) {
-                const nestedAllowed = whitelist.includes(`${property}.${nestedProp}`);
-                if (nestedAllowed) {
-                    outputOptions[property] = outputOptions[property] || {};
-                    outputOptions[property][nestedProp] = inputOptions[property][nestedProp];
-                }
-            }
-            continue;
-        }
-
-        // Copy allowed properties to outputOptions
-        if (allowed) {
-            outputOptions[property] = inputOptions[property];
-        }
-    }
-
-    return outputOptions;
-}
+// nextTick and filterClientOptions moved to src/server/utils.js
