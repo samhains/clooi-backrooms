@@ -4,8 +4,6 @@ import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
 import { spawn } from 'child_process';
-import boxen from 'boxen';
-import chalk from 'chalk';
 import { writeFile, readFile } from 'fs/promises';
 import { existsSync, realpathSync } from 'fs';
 import { unlink } from 'fs/promises';
@@ -29,8 +27,8 @@ import {
 } from '../src/conversation.js';
 import path from 'path';
 import { tryBoxen } from '../src/cli/boxen.js';
-import { getBackroomsDir, getBackroomsFiles, parseBackroomsLog } from '../src/cli/backrooms.js';
-import { systemMessageBox, suggestionBox, suggestionsBoxes, replaceWhitespace } from '../src/cli/ui.js';
+import { getBackroomsFiles, parseBackroomsLog } from '../src/cli/backrooms.js';
+import { systemMessageBox, suggestionsBoxes, replaceWhitespace } from '../src/cli/ui.js';
 import { logError, logSuccess, logWarning } from '../src/cli/logging.js';
 import { conversationStart as conversationStartBox, historyBoxes as renderHistoryBoxes, navButton as renderNavButton } from '../src/cli/history.js';
 
@@ -1212,18 +1210,6 @@ function aiMessageBox(message, title = null) {
             top: 1, bottom: 0, left: 1, right: 1,
         },
         dimBorder: true,
-    });
-}
-
-function userMessageBox(message, title = null) {
-    return tryBoxen(`${message}`, {
-        title: title || client.names.user.display || 'User',
-        padding: 0.7,
-        margin: {
-            top: 1, bottom: 0, left: 2, right: 1,
-        },
-        float: 'right',
-        borderColor: 'blue',
     });
 }
 
