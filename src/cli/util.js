@@ -1,4 +1,4 @@
-import OpenRouterClient from '../OpenRouterClient.js';
+import OpenRouterClient from '../clients/OpenRouterClient.js';
 
 const settings = {
     clientToUse: {
