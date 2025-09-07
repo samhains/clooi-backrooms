@@ -1,5 +1,6 @@
 import './fetch-polyfill.js';
 import ChatClient from './ChatClient.js';
+import { loadModelPresets, resolveModelAlias } from './modelPresets.js';
 
 //TODO: add support for other models
 const MODEL_INFO = {
@@ -39,15 +40,41 @@ const OPENROUTER_PARTICIPANTS = {
 
 export default class OpenRouterClient extends ChatClient {
     constructor(options = {}) {
+        options.cache = options.cache || {};
         options.cache.namespace = options.cache.namespace || 'openrouter';
+
+        // Resolve alias to model slug before parent constructor applies options
+        const alias = options?.modelOptions?.modelAlias || options?.modelAlias;
+        if (!alias) {
+            throw new Error('OpenRouterClient requires modelOptions.modelAlias');
+        }
+        const mapped = resolveModelAlias(alias);
+        if (!mapped) {
+            throw new Error(`Unknown model alias: ${alias}`);
+        }
+        options.modelOptions = {
+            ...options.modelOptions,
+            model: mapped,
+        };
+
         super(options);
         this.apiKey = process.env.OPENROUTER_API_KEY || '';
         this.completionsUrl = 'https://openrouter.ai/api/v1/chat/completions';
         this.isChatGptModel = true;
         this.modelInfo = MODEL_INFO;
-        this.modelOptions = OPENROUTER_DEFAULT_MODEL_OPTIONS;
+        this.modelOptions = { ...OPENROUTER_DEFAULT_MODEL_OPTIONS, ...this.modelOptions };
         this.participants = OPENROUTER_PARTICIPANTS;
 
+        // Load shared presets (model aliases + optional globals)
+        const { globals } = loadModelPresets();
+        if (globals?.context_length && Number.isFinite(globals.context_length)) {
+            this.modelInfo.default.contextLength = globals.context_length;
+        }
+        if (globals?.max_tokens && Number.isFinite(globals.max_tokens) && (this.modelOptions.max_tokens == null)) {
+            this.modelOptions.max_tokens = globals.max_tokens;
+        }
+
+        // Re-apply options to ensure max token computations use our modelInfo and resolved model
         this.setOptions(options);
     }
 

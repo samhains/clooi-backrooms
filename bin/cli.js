@@ -119,7 +119,7 @@ async function updateSettings(path) {
     // settings.bingAiClient.features.genImage = false;
 
     
-    clientToUse = settings.cliOptions?.clientToUse || settings.clientToUse || 'bing';
+    clientToUse = settings.cliOptions?.clientToUse || settings.clientToUse || 'openrouter';
     // console.log(settings)
 
     clientOptions = getClientSettings(clientToUse, settings);

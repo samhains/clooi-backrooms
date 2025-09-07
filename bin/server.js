@@ -39,7 +39,7 @@ if (settings.storageFilePath && !settings.cacheOptions.store) {
     settings.cacheOptions.store = new KeyvFile({ filename: settings.storageFilePath });
 }
 
-const clientToUse = settings.apiOptions?.clientToUse || settings.clientToUse || 'claude';
+const clientToUse = settings.apiOptions?.clientToUse || settings.clientToUse || 'openrouter';
 const perMessageClientOptionsWhitelist = settings.apiOptions?.perMessageClientOptionsWhitelist || null;
 
 const server = fastify();
@@ -133,7 +133,7 @@ server.post('/conversation', async (request, reply) => {
     } else if (settings.apiOptions?.debug) {
         console.debug(error);
     }
-    const message = error?.data?.message || error?.message || `There was an error communicating with ${clientToUse === 'bing' ? 'Bing' : 'ChatGPT'}.`;
+    const message = error?.data?.message || error?.message || `There was an error communicating with OpenRouter.`;
     if (stream === true) {
         reply.sse({
             id: '',
