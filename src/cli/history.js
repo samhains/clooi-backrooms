@@ -2,6 +2,11 @@ import { tryBoxen } from './boxen.js';
 import { replaceWhitespace } from './ui.js';
 import { getChildren, getSiblings } from '../conversation.js';
 
+/**
+ * Functions for rendering conversation history trees with navigation hints.
+ */
+
+/** Render the conversation header line. */
 export function conversationStart(conversationId) {
   return tryBoxen(`Start of conversation ${conversationId}`, {
     padding: 0.7,
@@ -14,6 +19,7 @@ export function conversationStart(conversationId) {
   });
 }
 
+/** Render a nav button index with selection/visited markers. */
 export function navButton(node, idx, mainMessageId) {
   let buttonString = idx;
   if (node.unvisited) {
@@ -22,6 +28,12 @@ export function navButton(node, idx, mainMessageId) {
   return node.id === mainMessageId ? `[${buttonString}]` : `${buttonString}`;
 }
 
+/**
+ * Render a single conversation message with sibling/child hints.
+ * @param {*} conversationMessage
+ * @param {number|null} index
+ * @param {{messages: *, getAILabel: Function, userDisplay: string}} ctx
+ */
 export function conversationMessageBox(conversationMessage, index = null, ctx) {
   const { messages, getAILabel, userDisplay } = ctx;
   if (conversationMessage.unvisited) {
@@ -50,7 +62,7 @@ export function conversationMessageBox(conversationMessage, index = null, ctx) {
   });
 }
 
+/** Render all message boxes for the given history path. */
 export function historyBoxes(messageHistory, ctx) {
   return messageHistory?.map((m, index) => conversationMessageBox(m, index, ctx)).join('\n');
 }
-

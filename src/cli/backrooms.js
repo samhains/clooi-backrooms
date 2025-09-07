@@ -1,10 +1,23 @@
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Backrooms import helpers for parsing and listing .txt transcripts
+ * from the repository's ./import directory.
+ */
+
+/**
+ * Resolve the absolute path to the import directory.
+ * @returns {string}
+ */
 export function getBackroomsDir() {
   return path.resolve('./import');
 }
 
+/**
+ * List available .txt import files with file stats, newest first.
+ * @returns {{name:string, full:string, mtime:number}[]}
+ */
 export function getBackroomsFiles() {
   const dir = getBackroomsDir();
   if (!fs.existsSync(dir)) {
@@ -26,6 +39,13 @@ export function getBackroomsFiles() {
  * Parse Backrooms .txt logs into messages.
  * @param {string} content
  * @param {{user: string, bot: string}} roles - role author names
+ */
+/**
+ * Parse Backrooms .txt log content into message objects using simple
+ * header heuristics ("### ... 1 ###" => user, "... 2" => assistant).
+ * @param {string} content
+ * @param {{user:string, bot:string}} roles
+ * @returns {{author:string,text:string,type:'message'}[]}
  */
 export function parseBackroomsLog(content, roles) {
   const lines = content.split(/\r?\n/);
@@ -59,4 +79,3 @@ export function parseBackroomsLog(content, roles) {
   flush();
   return messages;
 }
-

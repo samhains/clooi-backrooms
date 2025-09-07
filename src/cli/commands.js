@@ -1,3 +1,8 @@
+/**
+ * Build the CLI commands array using the provided handlers. This keeps
+ * bin/cli.js focused on orchestration, while preserving identical behavior.
+ * @param {object} api
+ */
 export function buildCommands(api) {
   const {
     showCommandDocumentation,
@@ -249,4 +254,3 @@ export function buildCommands(api) {
     },
   ];
 }
-

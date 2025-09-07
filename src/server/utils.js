@@ -1,3 +1,4 @@
+/** Resolve on the next tick (micro delay for streaming/buffering). */
 export function nextTick() {
   return new Promise(resolve => setTimeout(resolve, 0));
 }
@@ -9,6 +10,11 @@ export function nextTick() {
  * @param {object} inputOptions
  * @param {string} clientToUseForMessage
  * @param {object|null} perMessageClientOptionsWhitelist
+ */
+/**
+ * Filter objects to only include whitelisted properties set in
+ * settings.apiOptions.perMessageClientOptionsWhitelist.
+ * Returns null if no whitelist provided; original input if whitelist has no entry for client.
  */
 export function filterClientOptions(inputOptions, clientToUseForMessage, perMessageClientOptionsWhitelist) {
   if (!inputOptions || !perMessageClientOptionsWhitelist) {
@@ -57,4 +63,3 @@ export function filterClientOptions(inputOptions, clientToUseForMessage, perMess
 
   return outputOptions;
 }
-

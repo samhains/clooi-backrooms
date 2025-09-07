@@ -1,5 +1,7 @@
 import { tryBoxen } from './boxen.js';
 
+/** Lightweight logging helpers that wrap messages in boxen UI. */
+
 export function logError(message) {
   console.log(
     tryBoxen(message, {
@@ -35,4 +37,3 @@ export function logWarning(message) {
     }),
   );
 }
-

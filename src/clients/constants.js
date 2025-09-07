@@ -1,3 +1,4 @@
+/** Default model info used by ChatClient/OpenRouterClient. */
 export const DEFAULT_MODEL_INFO = {
   default: {
     contextLength: 8192,
@@ -5,6 +6,7 @@ export const DEFAULT_MODEL_INFO = {
   },
 };
 
+/** Default participant roles used across clients. */
 export const DEFAULT_PARTICIPANTS = {
   user: {
     display: 'User',
@@ -23,8 +25,8 @@ export const DEFAULT_PARTICIPANTS = {
   },
 };
 
+/** Map from internal basicMessage shape to API message fields. */
 export const DEFAULT_API_MESSAGE_SCHEMA = {
   author: 'role',
   text: 'content',
 };
-

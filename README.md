@@ -303,3 +303,41 @@ if (message.event === 'error') {
 #### Notes
 - Method 1 is simple, but Time to First Byte (TTFB) is long.
 - Method 2 uses a non-standard implementation of [server-sent event API](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events); you should import `fetch-event-source` first and use `POST` method.
+## Module Map (Light Refactor)
+
+This repo was lightly modularized to improve readability without breaking any public imports or behavior. Original entry points remain and re-export the new locations.
+
+- `src/clients`
+  - `ChatClient.js` – core chat client (moved)
+  - `OpenRouterClient.js` – OpenRouter implementation (moved)
+  - `constants.js` – defaults for models/participants/message schema
+  - `tokenizer.js` – shared tokenizer cache for tiktoken
+- `src/utils`
+  - `conversation.js` – conversation tree helpers (moved)
+  - `cache.js` – cache/keyv helpers (moved)
+  - `typeConversion.js` – transcript/XML conversion (moved)
+- `src/polyfills`
+  - `fetch.js` – undici-based fetch polyfill
+- `src/cli`
+  - `boxen.js` – safe wrapper around boxen
+  - `logging.js` – logError/logSuccess/logWarning
+  - `ui.js` – system/suggestion boxes and whitespace handling
+  - `history.js` – conversation history rendering and nav hints
+  - `backrooms.js` – Backrooms log listing + parsing
+  - `commands.js` – command registry builder used by `bin/cli.js`
+- `src/server`
+  - `utils.js` – server-side utils (nextTick, filterClientOptions)
+
+Compatibility shims (unchanged imports)
+
+- `src/ChatClient.js` → re-exports `./clients/ChatClient.js`
+- `src/OpenRouterClient.js` → re-exports `./clients/OpenRouterClient.js`
+- `src/conversation.js` → re-exports `./utils/conversation.js`
+- `src/cacheUtil.js` → re-exports `./utils/cache.js`
+- `src/typeConversionUtil.js` → re-exports `./utils/typeConversion.js`
+- `src/fetch-polyfill.js` → re-exports `./polyfills/fetch.js`
+
+Notes
+
+- CLI behavior and output formatting are unchanged; the code is split into focused modules.
+- Streaming fix: after SSE streaming completes, we no longer perform a redundant second POST. The client returns `{ result, results, replies }` for compatibility.
