@@ -91,7 +91,7 @@ async function renderConversation() {
       (m.message || '').split('\n').forEach(line => appendLine('  ' + line));
       appendLine('');
     });
-    appendLine(`Cursor: ${cursorId}`);
+    // omit explicit cursor id line to keep output clean
   } catch (e) {
     appendLine(`[error] history ${e?.message || e}`);
   }
