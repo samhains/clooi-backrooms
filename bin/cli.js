@@ -32,6 +32,7 @@ import { tryBoxen } from '../src/cli/boxen.js';
 import { getBackroomsDir, getBackroomsFiles, parseBackroomsLog } from '../src/cli/backrooms.js';
 import { systemMessageBox, suggestionBox, suggestionsBoxes, replaceWhitespace } from '../src/cli/ui.js';
 import { logError, logSuccess, logWarning } from '../src/cli/logging.js';
+import { conversationStart as conversationStartBox, historyBoxes as renderHistoryBoxes, navButton as renderNavButton } from '../src/cli/history.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const pathToSettings = arg?.split('=')[1] ?? './settings.js';
@@ -1400,64 +1401,18 @@ function userMessageBox(message, title = null) {
 }
 
 function conversationStart() {
-    console.log(tryBoxen(`Start of conversation ${getConversationId()}`, {
-        padding: 0.7,
-        margin: 2,
-        fullscreen: (width, height) => [width - 1, 1],
-        borderColor: 'blue',
-        borderStyle: 'doubleSingle',
-        float: 'center',
-        dimBorder: true,
-    }));
+    console.log(conversationStartBox(getConversationId()));
 }
 
-function navButton(node, idx, mainMessageId) { //, savedIds = []) {
-    // const navigationHistoryIds = navigationHistory.map(data => data.parentMessageId);
-    let buttonString = idx;
-    if (node.unvisited) {
-        buttonString = buttonString + '*';
-    }
-
-    buttonString = node.id === mainMessageId ? `[${buttonString}]` : `${buttonString}`;
-    return buttonString;
-    // return navigationHistoryIds.includes(node.id) ? chalk.blueBright(`${buttonString}`) : `${buttonString}`
-    // return savedIds.includes(node.id) ? chalk.yellow(`${buttonString}`) : navigationHistoryIds.includes(node.id) ? chalk.blueBright(`${buttonString}`) : `${buttonString}`
-}
-
-function conversationMessageBox(conversationMessage, index = null) {
-    if(conversationMessage.unvisited) {
-        // mark as visited
-        conversationMessage.unvisited = false;
-    }
-    const children = getChildren(localConversation.messages, conversationMessage.id);
-    const siblings = getSiblings(localConversation.messages, conversationMessage.id);
-    // const siblingIndex = getSiblingIndex(messages, conversationMessage.id);
-    const aiMessage = Boolean(conversationMessage.role === getAILabel());
-    const userMessage = Boolean(conversationMessage.role === client.names.user.display);
-    const indexString = index !== null ? `[${index}] ` : '';
-    // const savedIds = await getSavedIds(client.conversationsCache);
-    const childrenString = children.length > 0 ? ` ── !fw [${children.map((child, idx) => `${idx}`).join(' ')}]` : '';
-    const siblingsString = siblings.length > 1 ? ` ── !alt ${siblings.map((sibling, idx) => navButton(sibling, idx, conversationMessage.id)).join(' ')}` : '';
-    const messageText = replaceWhitespace(conversationMessage.message);
-    return tryBoxen(messageText, {
-        title: `${indexString}${conversationMessage.role}${siblingsString}${childrenString}`,
-        padding: 0.7,
-        margin: {
-            top: 1,
-            bottom: 0,
-            left: userMessage ? 1 : 1,
-            right: aiMessage ? 1 : 1,
-        },
-        dimBorder: true,
-        borderColor: aiMessage ? 'white' : (userMessage ? 'blue' : 'green'),
-        float: aiMessage ? 'left' : (userMessage ? 'right' : 'center'),
-    });
-}
+const navButton = renderNavButton;
 
 function historyBoxes() {
     const messageHistory = getHistory();
-    // const messages = await conversationMessages();
-    return messageHistory?.map((conversationMessage, index) => conversationMessageBox(conversationMessage, index)).join('\n');
+    return renderHistoryBoxes(messageHistory, {
+        messages: localConversation.messages,
+        getAILabel,
+        userDisplay: client.names.user.display,
+    });
 }
 
 function showHistory() {
