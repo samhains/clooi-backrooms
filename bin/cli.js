@@ -28,6 +28,10 @@ import {
     getParent,
 } from '../src/conversation.js';
 import path from 'path';
+import { tryBoxen } from '../src/cli/boxen.js';
+import { getBackroomsDir, getBackroomsFiles, parseBackroomsLog } from '../src/cli/backrooms.js';
+import { systemMessageBox, suggestionBox, suggestionsBoxes, replaceWhitespace } from '../src/cli/ui.js';
+import { logError, logSuccess, logWarning } from '../src/cli/logging.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const pathToSettings = arg?.split('=')[1] ?? './settings.js';
@@ -915,62 +919,7 @@ async function addMessages(newMessages = null) {
 
 // -------- Backrooms Logs Import --------
 
-function getBackroomsDir() {
-    // Resolve from project root
-    return path.resolve('./import');
-}
-
-function getBackroomsFiles() {
-    const dir = getBackroomsDir();
-    if (!fs.existsSync(dir)) {
-        return [];
-    }
-    const entries = fs.readdirSync(dir)
-        .filter(f => f.endsWith('.txt'))
-        .map(name => {
-            const full = path.join(dir, name);
-            const stat = fs.statSync(full);
-            return { name, full, mtime: stat.mtimeMs };
-        })
-        .sort((a, b) => b.mtime - a.mtime);
-    return entries;
-}
-
-function parseBackroomsLog(content) {
-    // Parse sections delimited by lines like: "### Hermes 405B 1 ###"
-    const lines = content.split(/\r?\n/);
-    const headerRegex = /^###\s+(.+?)\s+###\s*$/;
-    let currentHeader = null;
-    let buffer = [];
-    const messages = [];
-
-    function flush() {
-        if (!currentHeader) return;
-        const text = buffer.join('\n').trim();
-        buffer = [];
-        if (!text) return;
-        // Heuristic: header with trailing ' 1' => user, ' 2' => assistant
-        const isOne = /(^|\s)1(\s|$)/.test(currentHeader);
-        const isTwo = /(^|\s)2(\s|$)/.test(currentHeader);
-        let author = client.names.user.author;
-        if (isTwo) author = client.names.bot.author;
-        else if (isOne) author = client.names.user.author;
-        messages.push({ author, text, type: 'message' });
-    }
-
-    for (const line of lines) {
-        const m = line.match(headerRegex);
-        if (m) {
-            // New section
-            flush();
-            currentHeader = m[1];
-        } else {
-            buffer.push(line);
-        }
-    }
-    flush();
-    return messages;
-}
+// Backrooms import helpers moved to src/cli/backrooms.js
 
 async function importBackroomsLogFlow(targetPath = null) {
     try {
@@ -998,7 +947,7 @@ async function importBackroomsLogFlow(targetPath = null) {
         }
 
         const raw = fs.readFileSync(filePath, 'utf8');
-        const msgs = parseBackroomsLog(raw);
+        const msgs = parseBackroomsLog(raw, { user: client.names.user.author, bot: client.names.bot.author });
         if (!msgs.length) {
             logWarning('Could not parse any messages from the selected log.');
             return conversation();
@@ -1420,36 +1369,12 @@ async function printOrCopyData(action, args = null) {
     return conversation();
 }
 
-function logError(message) {
-    console.log(tryBoxen(message, {
-        title: 'Error', padding: 0.7, margin: 1, borderColor: 'red', float: 'center',
-    }));
-}
-
-function logSuccess(message) {
-    console.log(tryBoxen(message, {
-        title: 'Success', padding: 0.7, margin: 1, borderColor: 'green', float: 'center',
-    }));
-}
-
-function logWarning(message) {
-    console.log(tryBoxen(message, {
-        title: 'Warning', padding: 0.7, margin: 1, borderColor: 'yellow', float: 'center',
-    }));
-}
-
 /**
  * Boxen can throw an error if the input is malformed, so this function wraps it in a try/catch.
  * @param {string} input
  * @param {*} options
  */
-function tryBoxen(input, options) {
-    try {
-        return boxen(input, options);
-    } catch {
-        return input;
-    }
-}
+// tryBoxen moved to src/cli/boxen.js
 
 function aiMessageBox(message, title = null) {
     return tryBoxen(`${message}`, {
@@ -1474,19 +1399,6 @@ function userMessageBox(message, title = null) {
     });
 }
 
-function systemMessageBox(message, title = null) {
-    return tryBoxen(`${message}`, {
-        title: title || 'System',
-        padding: 0.7,
-        margin: {
-            top: 1, bottom: 0, left: 1, right: 2,
-        },
-        float: 'center',
-        borderColor: 'white',
-        dimBorder: true,
-    });
-}
-
 function conversationStart() {
     console.log(tryBoxen(`Start of conversation ${getConversationId()}`, {
         padding: 0.7,
@@ -1497,11 +1409,6 @@ function conversationStart() {
         float: 'center',
         dimBorder: true,
     }));
-}
-
-function replaceWhitespace(str) {
-    // replaces all space characters with ⠀ to prevent trimming
-    return str.replace(/\n /g, '\n⠀');
 }
 
 function navButton(node, idx, mainMessageId) { //, savedIds = []) {
@@ -1545,27 +1452,6 @@ function conversationMessageBox(conversationMessage, index = null) {
         borderColor: aiMessage ? 'white' : (userMessage ? 'blue' : 'green'),
         float: aiMessage ? 'left' : (userMessage ? 'right' : 'center'),
     });
-}
-
-function suggestionBox(suggestion) {
-    return tryBoxen(suggestion, {
-        title: 'Suggestion',
-        padding: 0.7,
-        margin: {
-            top: 0,
-            bottom: 0,
-            left: 1,
-            right: 1,
-        },
-        titleAlignment: 'right',
-        float: 'right',
-        dimBorder: true,
-        borderColor: 'blue',
-    });
-}
-
-function suggestionsBoxes(suggestions) {
-    return suggestions.map(suggestion => suggestionBox(suggestion)).join('\n');
 }
 
 function historyBoxes() {

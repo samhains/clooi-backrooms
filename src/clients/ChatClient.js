@@ -6,7 +6,6 @@ import { Agent } from 'undici';
 import { getMessagesForConversation } from '../conversation.js';
 import { DEFAULT_API_MESSAGE_SCHEMA, DEFAULT_MODEL_INFO, DEFAULT_PARTICIPANTS } from './constants.js';
 import { getTokenizer as getTokenizerImpl } from './tokenizer.js';
-import { encoding_for_model as encodingForModel, get_encoding as getEncoding } from '@dqbd/tiktoken';
 import * as conversions from '../typeConversionUtil.js';
 
 // constants and tokenizer cache moved to dedicated modules
