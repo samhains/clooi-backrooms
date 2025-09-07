@@ -1,6 +1,6 @@
 import { tryBoxen } from './boxen.js';
 import { replaceWhitespace } from './ui.js';
-import { getChildren, getSiblings } from '../conversation.js';
+import { getChildren, getSiblings } from '../utils/conversation.js';
 
 /**
  * Functions for rendering conversation history trees with navigation hints.
