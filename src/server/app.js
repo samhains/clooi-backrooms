@@ -6,9 +6,9 @@ import { FastifySSEPlugin } from '@waylaidwanderer/fastify-sse-v2';
 import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
-import { getClient } from '../cli/util.js';
 import { on } from 'events';
-import { nextTick, filterClientOptions } from '../src/server/utils.js';
+import { nextTick, filterClientOptions } from './utils.js';
+import { registerDreamSim } from './dreamsim.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const path = arg?.split('=')[1] ?? './settings.js';
@@ -149,6 +149,9 @@ server.post('/conversation', async (request, reply) => {
     }
     return reply.code(code).send({ error: message });
 });
+
+// Register DreamSim routes and static UI
+registerDreamSim(server, settings);
 
 server.listen({
     port: settings.apiOptions?.port || settings.port || 3000,
