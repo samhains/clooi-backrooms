@@ -50,13 +50,15 @@ async function streamLine(input) {
     out.textContent += `[error] HTTP ${res.status}`;
     return;
   }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
+  // Stream using TextDecoderStream to avoid partial UTF-8 splits
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    out.textContent += decoder.decode(value);
-    term.scrollTop = term.scrollHeight;
+    if (value) {
+      out.textContent += value;
+      term.scrollTop = term.scrollHeight;
+    }
   }
 
   // After a rewind command, re-render conversation to reflect new cursor
