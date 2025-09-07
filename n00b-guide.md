@@ -52,7 +52,7 @@ For infrastructs using OpenAI base models, you will have to set `OPENAI_API_KEY`
 
 ### 5 running the BCLI
 
-To start the Bingleton Command Loom interface, simply run the command
+To start the CLooI (Command Loom Interface), simply run the command
 ```
 npm run cli
 ```

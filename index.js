@@ -1,8 +1,5 @@
-import ChatGPTClient from './src/ChatGPTClient.js';
-import ChatGPTBrowserClient from './src/ChatGPTBrowserClient.js';
-import BingAIClient from './src/BingAIClient.js';
-import ChatClient from './src/ChatClient.js';
-import ClaudeClient from './src/ClaudeClient.js';
+import ChatClient from './src/clients/ChatClient.js';
+import OpenRouterClient from './src/clients/OpenRouterClient.js';
 
-export { ChatGPTClient, ChatGPTBrowserClient, BingAIClient, ClaudeClient, ChatClient };
-export default ChatGPTClient;
+export { OpenRouterClient, ChatClient };
+export default OpenRouterClient;

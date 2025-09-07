@@ -66,7 +66,7 @@ const opts = {
         //     n: 1,
         // },
         //client: 'claude',
-        client: 'bing',
+        client: 'openrouter',
     }),
 };
 
