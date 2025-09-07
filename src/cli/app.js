@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import 'dotenv/config';
 import fs from 'fs';
 import { pathToFileURL } from 'url';
@@ -16,14 +17,14 @@ import inquirer from 'inquirer';
 import inquirerAutocompletePrompt from 'inquirer-autocomplete-prompt';
 import crypto from 'crypto';
 import { getClient, getClientSettings } from './util.js';
-import { getCid, savedStatesByConversation, getSavedIds } from '../cacheUtil.js';
+import { getCid, savedStatesByConversation, getSavedIds } from '../utils/cache.js';
 import {
     getMessagesForConversation,
     getChildren,
     getSiblings,
     getSiblingIndex,
     getParent,
-} from '../conversation.js';
+} from '../utils/conversation.js';
 import path from 'path';
 import { tryBoxen } from './boxen.js';
 import { getBackroomsFiles, parseBackroomsLog } from './backrooms.js';

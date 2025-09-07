@@ -3,10 +3,10 @@ import crypto from 'crypto';
 import Keyv from 'keyv';
 import { fetchEventSource } from '@waylaidwanderer/fetch-event-source';
 import { Agent } from 'undici';
-import { getMessagesForConversation } from '../conversation.js';
+import { getMessagesForConversation } from '../utils/conversation.js';
 import { DEFAULT_API_MESSAGE_SCHEMA, DEFAULT_MODEL_INFO, DEFAULT_PARTICIPANTS } from './constants.js';
 import { getTokenizer as getTokenizerImpl } from './tokenizer.js';
-import * as conversions from '../typeConversionUtil.js';
+import * as conversions from '../utils/typeConversion.js';
 
 // constants and tokenizer cache moved to dedicated modules
 

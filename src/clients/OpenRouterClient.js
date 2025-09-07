@@ -1,4 +1,4 @@
-import '../fetch-polyfill.js';
+import '../polyfills/fetch.js';
 import ChatClient from './ChatClient.js';
 import { loadModelPresets, resolveModelAlias } from '../modelPresets.js';
 
@@ -90,4 +90,3 @@ export default class OpenRouterClient extends ChatClient {
         };
     }
 }
-

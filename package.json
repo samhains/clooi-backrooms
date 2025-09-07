@@ -4,16 +4,16 @@
   "description": "Command Loom Interface.",
   "main": "index.js",
   "bin": {
-    "chatgpt-api": "bin/server.js",
-    "chatgpt-cli": "bin/cli.js"
+    "chatgpt-api": "src/server/app.js",
+    "chatgpt-cli": "src/cli/app.js"
   },
   "scripts": {
     "test": "npx eslint .",
-    "start": "node bin/server.js",
-    "server": "node bin/server.js",
-    "cli": "node bin/cli.js",
-    "dev:debug:server": "nodemon --ignore cache.json --inspect=0.0.0.0:9229 bin/server.js",
-    "dev:debug:cli": "nodemon --ignore cache.json --inspect=0.0.0.0:9228 bin/cli.js"
+    "start": "node src/server/app.js",
+    "server": "node src/server/app.js",
+    "cli": "node src/cli/app.js",
+    "dev:debug:server": "nodemon --ignore cache.json --inspect=0.0.0.0:9229 src/server/app.js",
+    "dev:debug:cli": "nodemon --ignore cache.json --inspect=0.0.0.0:9228 src/cli/app.js"
   },
   "author": "waylaidwanderer",
   "license": "MIT",
