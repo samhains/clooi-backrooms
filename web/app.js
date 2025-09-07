@@ -1,5 +1,8 @@
+import { TITLE, WELCOME_LINES, HELP_LINES } from './config.js';
+
 const term = document.getElementById('term');
 const cmd = document.getElementById('cmd');
+const header = document.getElementById('header');
 
 function appendLine(text = '') {
   const div = document.createElement('div');
@@ -125,19 +128,10 @@ cmd.addEventListener('keydown', (e) => {
   }
 });
 
-appendLine('Welcome to DreamSim. Type a dream to begin, or !rw -1 to rewind.');
+if (header && TITLE) header.textContent = TITLE;
+for (const line of WELCOME_LINES) appendLine(line);
 
 function renderHelp() {
-  const lines = [
-    'DreamSim commands:',
-    '',
-    '!rw [id|-1]    Rewind to message (or parent with -1)',
-    '!save [name]    Save a checkpoint at current cursor',
-    '!load <name>    Load a saved checkpoint',
-    '',
-    'Tips:',
-    '- Type dreams or actions as normal input.',
-    '- After rewind or load, the view updates to the active path.',
-  ];
+  const lines = HELP_LINES();
   lines.forEach(l => appendLine(l));
 }
