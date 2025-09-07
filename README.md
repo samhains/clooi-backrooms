@@ -9,7 +9,7 @@ If you are a complete n00b to coding, you can consult the [n00b's guide to runni
 
 ## Install instructions
 
-1. Clone this repository: `git clone git@github.com:socketteer/bingleton-api.git`
+1. Clone this repository: `git clone git@github.com:socketteer/clooi-backrooms.git`
 2. Install dependencies with `npm install`
 3. Rename `settings.example.js` to `settings.js` in the root directory and change the settings where required.
     - **Note**: When pulling changes from this repo, attend to changes to `settings.example.js` which you may want or need to copy over to your settings.js file.
@@ -112,30 +112,7 @@ The system prompt (passed as a request parameter for Claude, prepended to prompt
 
 All messages are saved in `cache.json`, but you can save a named pointer to a specific conversation state using the `!save` command. You can then load the conversation state at that point using the `!load` command.
 
-## BingAIClient
-
-<details>
-<summary><strong>sendMessage parameters</strong></summary>
-
-- `message`: The user message to send to the API. String.
-- `opts`: A dictionary of options to configure the API request:
-    - `parentMessageId`: The id of the parent message in the conversation. If not provided, the message will be treated as the first message in the conversation.
-    - `jailbreakConversationId`: The id of the conversation in the cache. Set to true to start a new conversation.
-    - `toneStyle`: Determines the model and changes MSFT's backend settings. 
-        - `'creative'`: Prometheus
-        - `'precise'`: Deucalion
-        - `'balanced'`: Deucalion
-        - `'fast'`: probably ChatGPT-3.5
-    - `injectionMethod`: Determines how new user messages are injected into the conversation. 
-        - `'message'`: Inject new user messages as new messages in the conversation.
-        - `'context'`: Inject new user messages the last message in the injected context and set user message to `userMessageInjection` value.
-    - `userMessageInjection`: The message to inject into the user message when `injectionMethod` is set to `'context'` or when no user message is provided.
-    - `systemMessage`: Text of the system message to append to Bing's instructions under the heading `[system](#additional_instructions)`.
-    - `context`: Text of the context to inject into the conversation (acts like web page context)
-    - `censoredMessageInjection`: String to append to messages that get cut off by Bing's filter in the conversation history.
-    - `appendMessages`: optional array of messages or string in standard format to append to the conversation history. Messages will be appended in the order they are provided, and before the user message.
-
-</details>
+<!-- Removed legacy BingAIClient section during cleanup -->
 
 <!-- Bing-specific prompt injection docs removed during cleanup -->
 
@@ -150,51 +127,39 @@ All messages are saved in `cache.json`, but you can save a named pointer to a sp
 <summary><strong>POST /conversation</strong></summary>
 
 Start or continue a conversation.
-Optional parameters are only necessary for conversations that span multiple requests.
 
-| Field                     | Description                                                                                                                                                                                                                                                     |
-|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| message                   | The message to be displayed to the user.                                                                                                                                                                                                                        |
-| conversationId            | (Optional) An ID for the conversation you want to continue.                                                                                                                                                                                                     |
-| jailbreakConversationId   | (Optional, for `BingAIClient` only) Set to `true` to start a conversation in jailbreak mode. After that, this should be the ID for the jailbreak conversation (given in the response as a parameter also named `jailbreakConversationId`).                      |
-| parentMessageId           | (Optional, for `ChatGPTClient`, and `BingAIClient` in jailbreak mode) The ID of the parent message (i.e. `response.messageId`) when continuing a conversation.                                                                                                  |
-| conversationSignature     | (Optional, for `BingAIClient` only) A signature for the conversation (given in the response as a parameter also named `conversationSignature`). Required when continuing a conversation unless in jailbreak mode.                                               |
-| clientId                  | (Optional, for `BingAIClient` only) The ID of the client. Required when continuing a conversation unless in jailbreak mode.                                                                                                                                     |
-| invocationId              | (Optional, for `BingAIClient` only) The ID of the invocation. Required when continuing a conversation unless in jailbreak mode.                                                                                                                                 |
-| clientOptions             | (Optional) An object containing options for the client.                                                                                                                                                                                                         |
-| clientOptions.clientToUse | (Optional) The client to use for this message. This build supports `openrouter`.                                                                                                                           |
-| clientOptions.*           | (Optional) Any valid options for the client. For example, for `ChatGPTClient`, you can set `clientOptions.openaiApiKey` to set an API key for this message only, or `clientOptions.promptPrefix` to give the AI custom instructions for this message only, etc. |
+Fields
 
-To configure which options can be changed per message (default: all), see the comments for `perMessageClientOptionsWhitelist` in `settings.example.js`.
-To allow changing clients, `perMessageClientOptionsWhitelist.validClientsToUse` must be set to a non-empty array as described in the example settings file.
+- `messages` (object):
+  - `userMessage` (optional): single message object or string
+  - `previousMessages` (optional): array of message objects
+  - `systemMessage` (optional): message object or string
+- `modelOptions` (object): OpenRouter options. Requires `modelAlias`. Supports `stream`, `temperature`, `max_tokens`, etc.
+- `opts` (object, optional): runtime options passed to the client (e.g., `onProgress` via SSE).
+
+For SSE, set `modelOptions.stream: true` and POST to `/conversation`. The server sends token deltas over SSE and finishes with a final `result` event and `[DONE]` sentinel.
 </details>
 
 ### Usage
 <details>
 <summary><strong>Method 1 (POST)</strong></summary>
 
-To start a conversation with ChatGPT, send a POST request to the server's `/conversation` endpoint with a JSON body with parameters per **Endpoints** > **POST /conversation** above.
+Send a POST to `/conversation` with `messages` and `modelOptions`.
 ```JSON
 {
-    "message": "Hello, how are you today?",
-    "conversationId": "your-conversation-id (optional)",
-    "parentMessageId": "your-parent-message-id (optional, for `ChatGPTClient` only)",
-    "conversationSignature": "your-conversation-signature (optional, for `BingAIClient` only)",
-    "clientId": "your-client-id (optional, for `BingAIClient` only)",
-    "invocationId": "your-invocation-id (optional, for `BingAIClient` only)",
+    "messages": {
+      "userMessage": { "author": "user", "text": "Hello!" },
+      "previousMessages": [],
+      "systemMessage": { "author": "system", "text": "You are helpful." }
+    },
+    "modelOptions": { "modelAlias": "llama3.1-8b", "stream": false }
 }
 ```
-The server will return a JSON object containing ChatGPT's response:
+The server returns a JSON object containing the response:
 ```JS
 // HTTP/1.1 200 OK
 {
-    "response": "I'm doing well, thank you! How are you?",
-    "conversationId": "your-conversation-id",
-    "messageId": "response-message-id (for `ChatGPTClient` only)",
-    "conversationSignature": "your-conversation-signature (for `BingAIClient` only)",
-    "clientId": "your-client-id (for `BingAIClient` only)",
-    "invocationId": "your-invocation-id (for `BingAIClient` only - pass this new value back into subsequent requests as-is)",
-    "details": "an object containing the raw response from the client"
+    "choices": [ { "message": { "role": "assistant", "content": "..." }, "index": 0 } ]
 }
 ```
 
@@ -207,11 +172,11 @@ If the request object is missing a required property (e.g. `message`):
     "error": "The message parameter is required."
 }
 ```
-If there was an error sending the message to ChatGPT:
+If there was an error sending the message to the client:
 ```JS
 // HTTP/1.1 503 Service Unavailable
 {
-    "error": "There was an error communicating with ChatGPT."
+    "error": "There was an error communicating with OpenRouter."
 }
 ```
 </details>
