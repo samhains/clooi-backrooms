@@ -30,6 +30,17 @@ export function createSessionManager({ client, settings, systemMessagePath = './
     return sessions.get(sessionId);
   }
 
+  async function ensureConversationInitialized(session) {
+    const conversation = (await client.conversationsCache.get(session.conversationId)) || { messages: [], createdAt: Date.now() };
+    if (conversation.messages.length === 0 && typeof systemMessage === 'string' && systemMessage.trim().length) {
+      const sys = client.createConversationMessage({ text: systemMessage, author: client.participants.system.author }, null);
+      conversation.messages.push(sys);
+      await client.conversationsCache.set(session.conversationId, conversation);
+      // Do not set parentMessageId here; cursor will move as user interacts
+    }
+    return conversation;
+  }
+
   function pruneLinearTail(conversation, newCursorId, oldCursorId) {
     if (!oldCursorId || !newCursorId) return;
     const path = getMessagesForConversation(conversation.messages, oldCursorId);
@@ -42,7 +53,7 @@ export function createSessionManager({ client, settings, systemMessagePath = './
   }
 
   async function rewind(session, arg, { pruneTail = false } = {}) {
-    const conversation = (await client.conversationsCache.get(session.conversationId)) || { messages: [] };
+    const conversation = await ensureConversationInitialized(session);
     const prevCursor = session.parentMessageId;
     if (!arg || arg === '-1') {
       const current = conversation.messages.find(m => m.id === session.parentMessageId);
@@ -80,6 +91,7 @@ export function createSessionManager({ client, settings, systemMessagePath = './
   async function handleInput(sessionId, input, { onToken, abortController, clientOptions } = {}) {
     const parsed = parseInput(input);
     const session = ensureSession(sessionId);
+    await ensureConversationInitialized(session);
     if (parsed.kind === 'empty') return { type: 'noop' };
 
     if (parsed.kind === 'command') {
@@ -94,8 +106,14 @@ export function createSessionManager({ client, settings, systemMessagePath = './
           if (!name) {
             name = `checkpoint-${new Date().toISOString().replace(/[:.]/g, '-')}`;
           }
+          const conversation = (await client.conversationsCache.get(session.conversationId)) || { messages: [] };
+          let cursor = session.parentMessageId;
+          if (!cursor && conversation.messages.length) {
+            cursor = conversation.messages[conversation.messages.length - 1].id;
+            session.parentMessageId = cursor;
+          }
           const table = saved.get(sessionId) || new Map();
-          table.set(name, session.parentMessageId);
+          table.set(name, cursor || null);
           saved.set(sessionId, table);
           return { type: 'command', command: 'save', ok: true, text: `Saved as '${name}'.` };
         }
@@ -160,8 +178,12 @@ export function createSessionManager({ client, settings, systemMessagePath = './
 
   async function getHistory(sessionId) {
     const session = ensureSession(sessionId);
-    const conversation = (await client.conversationsCache.get(session.conversationId)) || { messages: [] };
-    return { conversationId: session.conversationId, cursorId: session.parentMessageId, messages: conversation.messages };
+    const conversation = await ensureConversationInitialized(session);
+    let cursor = session.parentMessageId;
+    if (!cursor && conversation.messages.length) {
+      cursor = conversation.messages[conversation.messages.length - 1].id;
+    }
+    return { conversationId: session.conversationId, cursorId: cursor, messages: conversation.messages };
   }
 
   return { ensureSession, handleInput, getHistory };
