@@ -1,6 +1,7 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import { parseInput } from './commandParser.js';
+import { getMessagesForConversation } from './conversation.js';
 
 /**
  * Creates a session manager responsible for:
@@ -25,12 +26,28 @@ export function createSessionManager({ client, settings, systemMessagePath = './
     return sessions.get(sessionId);
   }
 
-  async function rewind(session, arg) {
+  function pruneLinearTail(conversation, newCursorId, oldCursorId) {
+    if (!oldCursorId || !newCursorId) return;
+    const path = getMessagesForConversation(conversation.messages, oldCursorId);
+    const idx = path.findIndex(m => m.id === newCursorId);
+    if (idx === -1) return;
+    const toRemove = path.slice(idx + 1).map(m => m.id);
+    if (!toRemove.length) return;
+    const rm = new Set(toRemove);
+    conversation.messages = conversation.messages.filter(m => !rm.has(m.id));
+  }
+
+  async function rewind(session, arg, { pruneTail = false } = {}) {
     const conversation = (await client.conversationsCache.get(session.conversationId)) || { messages: [] };
+    const prevCursor = session.parentMessageId;
     if (!arg || arg === '-1') {
       const current = conversation.messages.find(m => m.id === session.parentMessageId);
       if (current && current.parentMessageId) {
         session.parentMessageId = current.parentMessageId;
+        if (pruneTail) {
+          pruneLinearTail(conversation, session.parentMessageId, prevCursor);
+          await client.conversationsCache.set(session.conversationId, conversation);
+        }
         return { ok: true, text: `Rewound to parent: ${session.parentMessageId}` };
       }
       return { ok: false, text: 'Already at root; no parent to rewind to.' };
@@ -40,6 +57,10 @@ export function createSessionManager({ client, settings, systemMessagePath = './
       return { ok: false, text: `Message not found: ${arg}` };
     }
     session.parentMessageId = target.id;
+    if (pruneTail) {
+      pruneLinearTail(conversation, session.parentMessageId, prevCursor);
+      await client.conversationsCache.set(session.conversationId, conversation);
+    }
     return { ok: true, text: `Rewound to ${target.id}` };
   }
 
@@ -52,7 +73,7 @@ export function createSessionManager({ client, settings, systemMessagePath = './
       switch (parsed.cmd) {
         case 'rw': {
           const [arg] = parsed.args || [];
-          const res = await rewind(session, arg);
+          const res = await rewind(session, arg, { pruneTail: true });
           return { type: 'command', command: 'rw', ok: res.ok, text: res.text, cursorId: session.parentMessageId };
         }
         default:
@@ -108,4 +129,3 @@ export function createSessionManager({ client, settings, systemMessagePath = './
 
   return { ensureSession, handleInput, getHistory };
 }
-
