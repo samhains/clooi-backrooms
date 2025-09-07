@@ -112,8 +112,32 @@ cmd.addEventListener('keydown', (e) => {
     const input = cmd.value.trim();
     if (!input) return;
     cmd.value = '';
-    streamLine(input).catch(err => appendLine(`[error] ${err?.message || err}`));
+    // Client-side handled commands
+    if (input === '!help' || input === 'help' || input === '!commands') {
+      renderHelp();
+      return;
+    }
+    streamLine(input).then(() => {
+      if (input.startsWith('!load')) {
+        renderConversation();
+      }
+    }).catch(err => appendLine(`[error] ${err?.message || err}`));
   }
 });
 
 appendLine('Welcome to DreamSim. Type a dream to begin, or !rw -1 to rewind.');
+
+function renderHelp() {
+  const lines = [
+    'DreamSim commands:',
+    '',
+    '!rw [id|-1]    Rewind to message (or parent with -1)',
+    '!save [name]    Save a checkpoint at current cursor',
+    '!load <name>    Load a saved checkpoint',
+    '',
+    'Tips:',
+    '- Type dreams or actions as normal input.',
+    '- After rewind or load, the view updates to the active path.',
+  ];
+  lines.forEach(l => appendLine(l));
+}

@@ -12,6 +12,7 @@ import { getMessagesForConversation } from './conversation.js';
 export function createSessionManager({ client, settings, systemMessagePath = './contexts/dreamsim.txt', systemMessage: systemMessageRaw } = {}) {
   if (!client) throw new Error('createSessionManager requires a client');
   const sessions = new Map();
+  const saved = new Map(); // sessionId -> Map(name -> messageId)
   const systemMessage = systemMessageRaw || (fs.existsSync(systemMessagePath) ? fs.readFileSync(systemMessagePath, 'utf8') : '');
 
   function ensureSession(sessionId = 'local') {
@@ -22,6 +23,9 @@ export function createSessionManager({ client, settings, systemMessagePath = './
         parentMessageId: null,
         createdAt: Date.now(),
       });
+    }
+    if (!saved.has(sessionId)) {
+      saved.set(sessionId, new Map());
     }
     return sessions.get(sessionId);
   }
@@ -84,6 +88,30 @@ export function createSessionManager({ client, settings, systemMessagePath = './
           const [arg] = parsed.args || [];
           const res = await rewind(session, arg, { pruneTail: true });
           return { type: 'command', command: 'rw', ok: res.ok, text: res.text, cursorId: session.parentMessageId };
+        }
+        case 'save': {
+          let [name] = parsed.args || [];
+          if (!name) {
+            name = `checkpoint-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+          }
+          const table = saved.get(sessionId) || new Map();
+          table.set(name, session.parentMessageId);
+          saved.set(sessionId, table);
+          return { type: 'command', command: 'save', ok: true, text: `Saved as '${name}'.` };
+        }
+        case 'load': {
+          const [name] = parsed.args || [];
+          if (!name) {
+            return { type: 'command', command: 'load', ok: false, text: `Usage: !load <name>` };
+          }
+          const table = saved.get(sessionId) || new Map();
+          const targetId = table.get(name);
+          if (!targetId) {
+            return { type: 'command', command: 'load', ok: false, text: `No saved checkpoint named '${name}'.` };
+          }
+          // Set cursor and prune tail
+          const res = await rewind(session, targetId, { pruneTail: true });
+          return { type: 'command', command: 'load', ok: res.ok, text: `Loaded '${name}'.` };
         }
         default:
           return { type: 'command', command: parsed.cmd, ok: false, text: `Unknown command: !${parsed.cmd}` };

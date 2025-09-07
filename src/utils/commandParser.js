@@ -13,10 +13,13 @@ export function parseInput(input = '') {
       case 'rw':
       case 'rewind':
         return { kind: 'command', cmd: 'rw', args };
+      case 'save':
+        return { kind: 'command', cmd: 'save', args };
+      case 'load':
+        return { kind: 'command', cmd: 'load', args };
       default:
         return { kind: 'command', cmd: head, args };
     }
   }
   return { kind: 'message', text: line };
 }
-
