@@ -101,6 +101,15 @@ export function registerDreamSim(server, settings) {
       reply.code(404).send("Not found");
     }
   });
+  server.get("/config.js", async (request, reply) => {
+    try {
+      const file = await fsp.readFile(path.resolve("web/config.js"), "utf8");
+      reply.header("Content-Type", "application/javascript; charset=utf-8");
+      reply.send(file);
+    } catch (e) {
+      reply.code(404).send("Not found");
+    }
+  });
   server.get("/css/:file", async (request, reply) => {
     try {
       const file = await fsp.readFile(
