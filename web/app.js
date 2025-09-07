@@ -96,6 +96,11 @@ async function renderConversation() {
     const { cursorId, path } = data || {};
     // Clear terminal and rewrite full conversation path
     term.innerHTML = '';
+    if (!Array.isArray(path) || path.length === 0) {
+      appendLine('— Conversation —');
+      appendLine('(no messages yet)');
+      return;
+    }
     const label = (role) => {
       const r = (role || '').toLowerCase();
       if (r.includes('user') || r.includes('you')) return 'You';
@@ -123,6 +128,10 @@ cmd.addEventListener('keydown', (e) => {
     // Client-side handled commands
     if (input === '!help' || input === 'help' || input === '!commands') {
       renderHelp();
+      return;
+    }
+    if (input === '!history') {
+      renderConversation();
       return;
     }
     streamLine(input).then(() => {
