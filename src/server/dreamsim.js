@@ -35,8 +35,14 @@ export function registerDreamSim(server, settings) {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
+        'Transfer-Encoding': 'chunked',
         'X-Accel-Buffering': 'no',
       });
+      // Lower latency for small chunks
+      try { res.flushHeaders?.(); } catch {}
+      try { res.socket?.setNoDelay(true); } catch {}
+      // Prime the stream so intermediaries start forwarding chunks
+      try { res.write('\n'); } catch {}
 
       // Abort on client disconnect
       const abortController = new AbortController();
