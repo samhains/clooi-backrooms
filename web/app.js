@@ -41,6 +41,9 @@ async function streamLine(input) {
   term.appendChild(out);
   term.scrollTop = term.scrollHeight;
 
+  // Disable input during streaming
+  cmd.disabled = true;
+
   const res = await fetch(`/v1/dreamsim/stream?sessionId=${encodeURIComponent(getSessionId())}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -48,6 +51,8 @@ async function streamLine(input) {
   });
   if (!res.ok || !res.body) {
     out.textContent += `[error] HTTP ${res.status}`;
+    cmd.disabled = false;
+    cmd.focus();
     return;
   }
   // Stream using TextDecoderStream to avoid partial UTF-8 splits
@@ -65,6 +70,11 @@ async function streamLine(input) {
   if (input.startsWith('!rw')) {
     await renderConversation();
   }
+
+  // Signal readiness and re-enable input
+  appendLine('');
+  cmd.disabled = false;
+  cmd.focus();
 }
 
 function truncate(s, n = 120) {
