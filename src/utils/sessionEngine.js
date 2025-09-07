@@ -43,7 +43,16 @@ export function createSessionManager({ client, settings, systemMessagePath = './
     if (!arg || arg === '-1') {
       const current = conversation.messages.find(m => m.id === session.parentMessageId);
       if (current && current.parentMessageId) {
-        session.parentMessageId = current.parentMessageId;
+        // Step to parent
+        let target = conversation.messages.find(m => m.id === current.parentMessageId) || null;
+        // If parent is a user message, step one more up to land on an assistant node
+        if (target) {
+          const parentAuthor = client.convertAlias('display', 'author', target.role);
+          if (parentAuthor === 'user' && target.parentMessageId) {
+            target = conversation.messages.find(m => m.id === target.parentMessageId) || target;
+          }
+        }
+        session.parentMessageId = target?.id || current.parentMessageId;
         if (pruneTail) {
           pruneLinearTail(conversation, session.parentMessageId, prevCursor);
           await client.conversationsCache.set(session.conversationId, conversation);
