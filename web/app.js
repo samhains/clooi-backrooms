@@ -96,14 +96,19 @@ async function renderConversation() {
     const { cursorId, path } = data || {};
     // Clear terminal and rewrite full conversation path
     term.innerHTML = '';
-    appendLine('Conversation (to cursor)');
-    appendLine('');
-    path.forEach((m) => {
-      appendLine(`${m.role}:`);
-      // Render multi-line content
-      (m.message || '').split('\n').forEach(line => appendLine('  ' + line));
+    const label = (role) => {
+      const r = (role || '').toLowerCase();
+      if (r.includes('user') || r.includes('you')) return 'You';
+      if (r.includes('assistant') || r.includes('bot')) return 'Sim';
+      if (r.includes('system')) return 'System';
+      return role || '';
+    };
+    for (const m of path) {
+      appendLine(`${label(m.role)}:`);
+      const lines = (m.message || '').split('\n');
+      for (const line of lines) appendLine('  ' + line);
       appendLine('');
-    });
+    }
     // omit explicit cursor id line to keep output clean
   } catch (e) {
     appendLine(`[error] history ${e?.message || e}`);
