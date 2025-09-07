@@ -241,7 +241,7 @@ export default class ChatClient {
             ...this.buildApiParams(userMessage, previousMessages, systemMessage, { ...modelOptions, ...opts }),
         };
 
-        const result = await this.callAPI(apiParams, opts);
+        const { result } = await this.callAPI(apiParams, opts);
         return result
     }
 
@@ -411,26 +411,41 @@ export default class ChatClient {
                     reject(err);
                 }
             });
+            // Build a minimal result object from aggregated replies, to avoid a second POST
+            const resultFromStream = {
+                choices: Object.keys(replies).sort((a,b)=>Number(a)-Number(b)).map((k) => {
+                    const index = Number(k);
+                    const text = replies[k] || '';
+                    return this.isChatGptModel
+                        ? { index, message: { role: 'assistant', content: text } }
+                        : { index, text };
+                }),
+            };
+            return { result: resultFromStream, results: resultFromStream, replies };
         }
-        const response = await fetch(
-            url,
-            {
-                ...opts,
-                signal: abortController.signal,
-            },
-        );
+
+        // Non-streaming request path
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: bodyString,
+            dispatcher: agent,
+            signal: abortController.signal,
+        });
         if (response.status !== 200) {
-            const body = await response.text();
-            const error = new Error(`Failed to send message. HTTP ${response.status} - ${body}`);
+            const bodyText = await response.text();
+            const error = new Error(`Failed to send message. HTTP ${response.status} - ${bodyText}`);
             error.status = response.status;
             try {
-                error.json = JSON.parse(body);
+                error.json = JSON.parse(bodyText);
             } catch {
-                error.body = body;
+                error.body = bodyText;
             }
             throw error;
         }
-        return response.json();
+        const json = await response.json();
+        this.parseReplies(json, replies);
+        return { result: json, results: json, replies };
     }
 
     async addMessages(conversationId, messages, parentMessageId = null, chain = true) {
