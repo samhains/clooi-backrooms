@@ -11,8 +11,9 @@ If you are a complete n00b to coding, you can consult the [n00b's guide to runni
 
 1. Clone this repository: `git clone git@github.com:socketteer/clooi-backrooms.git`
 2. Install dependencies with `npm install`
-3. Rename `settings.example.js` to `settings.js` in the root directory and change the settings where required.
-    - **Note**: When pulling changes from this repo, attend to changes to `settings.example.js` which you may want or need to copy over to your settings.js file.
+3. Copy `.env.example` to `.env` and add your API keys and any overrides (do not commit `.env`).
+4. `settings.js` is checked into the repo and safe to edit for non-secret defaults (model aliases, toggles, etc.). Keep secrets in `.env` only.
+    - **Note**: If `settings.example.js` changes in the repo, you may copy useful non-secret options into your `settings.js`.
 
 ## CLooI instructions
 
@@ -105,6 +106,8 @@ The `!help` command will show a list of commands and their descriptions. You can
 #### Changing default options
 
 The default options for the CLI app are stored in `settings.js`, under `cliOptions`. You can change the default options by modifying this file. The changes to the settings will take effect when the file is saved.
+
+Secrets and environment-specific values (API keys, ports, hosts, paths) should be defined via environment variables in `.env` (loaded by `dotenv/config` in both CLI and server entrypoints). See `.env.example` for the expected variables.
 
 The system prompt (passed as a request parameter for Claude, prepended to prompt for Infrastruct, injected after Bing's normal system prompt) defaults are stored in text files in `contexts/` specified separately for each client in `settings.js/cliOptions`. You can change the content of the files to change the default system prompt and context, or point to different files in `settings.js`, or write the desired system prompt string directly in `settings.js`. The `contexts/` folder also contains alternative system prompts.
 
