@@ -216,8 +216,6 @@ cache.json
 
 .data/*
 
-# Imported transcripts folder
-import/
 
 # Temporary settings module copies created by the CLI hot-reload
 settings.js.*.tmp.js
