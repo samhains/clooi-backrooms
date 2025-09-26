@@ -39,3 +39,20 @@ export function resolveModelAlias(alias) {
   return null;
 }
 
+export function getDefaultModelAlias(preferredCompany = null) {
+  const { globals, models } = loadModelPresets();
+
+  if (preferredCompany) {
+    const match = Object.entries(models).find(([, details]) => details?.company === preferredCompany);
+    if (match) {
+      return match[0];
+    }
+  }
+
+  if (globals?.default_model_alias && models[globals.default_model_alias]) {
+    return globals.default_model_alias;
+  }
+
+  const [firstAlias] = Object.keys(models);
+  return firstAlias || null;
+}

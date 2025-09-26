@@ -1,15 +1,23 @@
 import OpenRouterClient from '../clients/OpenRouterClient.js';
+import ClaudeClient from '../clients/ClaudeClient.js';
 
 // CLI schema doc was Bing-heavy; removed for clarity.
 
 export function getClientSettings(clientToUse, settings) {
-    if (clientToUse !== 'openrouter') {
-        throw new Error('Only openrouter is supported by this build.');
+    switch (clientToUse) {
+        case 'openrouter':
+            return {
+                ...settings.openRouterClient,
+                ...settings.cliOptions.openRouterOptions,
+            };
+        case 'claude':
+            return {
+                ...settings.claudeClient,
+                ...settings.cliOptions.claudeOptions,
+            };
+        default:
+            throw new Error(`Unsupported client: ${clientToUse}`);
     }
-    return {
-        ...settings.openRouterClient,
-        ...settings.cliOptions.openRouterOptions,
-    };
 }
 
 export function getClient(clientToUse, settings) {
@@ -17,8 +25,12 @@ export function getClient(clientToUse, settings) {
         ...getClientSettings(clientToUse, settings),
         cache: settings.cacheOptions,
     };
-    if (clientToUse !== 'openrouter') {
-        throw new Error('Only openrouter is supported by this build.');
+    switch (clientToUse) {
+        case 'openrouter':
+            return new OpenRouterClient(clientOptions);
+        case 'claude':
+            return new ClaudeClient(clientOptions);
+        default:
+            throw new Error(`Unsupported client: ${clientToUse}`);
     }
-    return new OpenRouterClient(clientOptions);
 }

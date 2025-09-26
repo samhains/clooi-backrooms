@@ -1,28 +1,29 @@
 {
   "globals": {
     "context_length": 131072,
-    "max_tokens": 4096
+    "max_tokens": 4096,
+    "default_model_alias": "opus4"
   },
   "models": {
     "sonnet4": {
-      "api_name": "anthropic/claude-sonnet-4",
-      "display_name": "Claude",
-      "company": "openrouter"
+      "api_name": "claude-sonnet-4-20250514",
+      "display_name": "Claude Sonnet",
+      "company": "anthropic"
     },
     "sonnet3": {
-      "api_name": "anthropic/claude-3.7-sonnet",
-      "display_name": "Claude",
-      "company": "openrouter"
+      "api_name": "claude-3-7-sonnet-latest",
+      "display_name": "Claude Sonnet",
+      "company": "anthropic"
     },
     "opus3": {
-      "api_name": "anthropic/claude-3-opus",
-      "display_name": "Claude",
-      "company": "openrouter"
+      "api_name": "claude-3-opus-20240229",
+      "display_name": "Claude Opus",
+      "company": "anthropic"
     },
     "opus4": {
-      "api_name": "anthropic/claude-opus-4.1",
-      "display_name": "Claude",
-      "company": "openrouter"
+      "api_name": "claude-opus-4-1-20250805",
+      "display_name": "Claude Opus",
+      "company": "anthropic"
     },
     "grok4": {
       "api_name": "x-ai/grok-4",

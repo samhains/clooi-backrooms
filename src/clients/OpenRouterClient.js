@@ -1,6 +1,6 @@
 import '../polyfills/fetch.js';
 import ChatClient from './ChatClient.js';
-import { loadModelPresets, resolveModelAlias } from '../modelPresets.js';
+import { loadModelPresets, resolveModelAlias, getDefaultModelAlias } from '../modelPresets.js';
 
 //TODO: add support for other models
 const MODEL_INFO = {
@@ -44,7 +44,8 @@ export default class OpenRouterClient extends ChatClient {
         options.cache.namespace = options.cache.namespace || 'openrouter';
 
         // Resolve alias to model slug before parent constructor applies options
-        const alias = options?.modelOptions?.modelAlias || options?.modelAlias;
+        const fallbackAlias = getDefaultModelAlias('openrouter') || getDefaultModelAlias();
+        const alias = options?.modelOptions?.modelAlias || options?.modelAlias || fallbackAlias;
         if (!alias) {
             throw new Error('OpenRouterClient requires modelOptions.modelAlias');
         }
@@ -54,6 +55,7 @@ export default class OpenRouterClient extends ChatClient {
         }
         options.modelOptions = {
             ...options.modelOptions,
+            modelAlias: alias,
             model: mapped,
         };
 
