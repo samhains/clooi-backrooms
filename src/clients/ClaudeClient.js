@@ -117,7 +117,10 @@ export default class ClaudeClient extends ChatClient {
       };
 
       const lastMessage = mergedHistory[mergedHistory.length - 1];
-      if (lastMessage && lastMessage.role === normalized.role) {
+      const lastIsTextOnly = lastMessage?.content?.every?.(part => part.type === 'text') ?? false;
+      const currentIsTextOnly = normalized.content.every(part => part.type === 'text');
+
+      if (lastMessage && lastMessage.role === normalized.role && lastIsTextOnly && currentIsTextOnly) {
         const existing = lastMessage.content?.[lastMessage.content.length - 1]?.text || '';
         const addition = normalized.content?.[0]?.text || '';
         lastMessage.content = [{ type: 'text', text: `${existing}${addition}` }];
@@ -126,12 +129,66 @@ export default class ClaudeClient extends ChatClient {
       }
     }
 
+    const anthropicReadyHistory = mergedHistory.map(message => {
+      const content = message.content
+        .map(part => this.#toAnthropicContentPart(part))
+        .filter(Boolean);
+
+      return {
+        ...message,
+        content: content.length ? content : [{ type: 'text', text: '' }],
+      };
+    });
+
     const system = systemMessage?.text || null;
 
     return {
-      messages: mergedHistory,
+      messages: anthropicReadyHistory,
       ...(system ? { system } : {}),
     };
+  }
+
+  #toAnthropicContentPart(part) {
+    if (!part) {
+      return null;
+    }
+
+    if (part.type === 'input_image') {
+      const sourceUrl = part.image_url?.url || part.url;
+      if (!sourceUrl) {
+        return null;
+      }
+
+      if (sourceUrl.startsWith('data:')) {
+        const match = sourceUrl.match(/^data:(.+?);base64,(.+)$/);
+        if (!match) {
+          return null;
+        }
+        const [, mediaType, base64Data] = match;
+        return {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data,
+          },
+        };
+      }
+
+      return {
+        type: 'image',
+        source: {
+          type: 'url',
+          url: sourceUrl,
+        },
+      };
+    }
+
+    if (part.type === 'text') {
+      return { type: 'text', text: part.text ?? '' };
+    }
+
+    return part;
   }
 
   async callAPI(params, opts = {}) {

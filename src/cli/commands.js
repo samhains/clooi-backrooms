@@ -20,6 +20,7 @@ export function buildCommands(api) {
     useEditor,
     editMessage,
     addMessages,
+    sendImageMessage,
     mergeUp,
     showHistory,
     stopSettingsWatcher,
@@ -182,6 +183,14 @@ export function buildCommands(api) {
       description:
         'Concatenate message(s) to the conversation.\n\t[message]: If provided, concatenate the message as a user message. If not provided, the editor will open, and you write either a string for a single user message or any number of consecutive messages (with sender specified in headers) in the standard transcript format.',
       command: async args => addMessages(args[1]),
+    },
+    {
+      name: '!image - Attach an image with an optional prompt',
+      value: '!image',
+      usage: '!image <image_path> [prompt]',
+      description:
+        'Attach a local image to the next request. Provide prompt text after the path to describe what to do with the image.',
+      command: async (args, raw) => sendImageMessage(raw),
     },
     {
       name: '!merge - Merge the last message up into the parent message',

@@ -492,23 +492,80 @@ export default class ChatClient {
     }
 
     toAPImessage(message) {
-        // for every key in this.apiMessageSchema, map the value from the message
         const apiMessage = {};
-        for (const key in this.apiMessageSchema) {
-            if (message[key]) {
-                apiMessage[this.apiMessageSchema[key]] = message[key];
+        const schema = this.apiMessageSchema || {};
+
+        if (schema.author && message.author) {
+            apiMessage[schema.author] = message.author;
+        }
+
+        const contentParts = this.buildContentParts(message);
+        if (contentParts) {
+            apiMessage.content = contentParts;
+        } else if (schema.text && (message.text !== undefined)) {
+            apiMessage[schema.text] = message.text;
+        }
+
+        for (const key in schema) {
+            if (key === 'author' || key === 'text') {
+                continue;
+            }
+            if (Object.prototype.hasOwnProperty.call(message, key)) {
+                apiMessage[schema[key]] = message[key];
             }
         }
+
         return apiMessage;
+    }
+
+    buildContentParts(message) {
+        const details = message?.details;
+        if (!details) {
+            return null;
+        }
+
+        if (Array.isArray(details.contentParts) && details.contentParts.length) {
+            return details.contentParts;
+        }
+
+        const parts = [];
+        const prompt = typeof details.prompt === 'string' ? details.prompt : null;
+        if (prompt) {
+            parts.push({ type: 'text', text: prompt });
+        }
+
+        if (Array.isArray(details.attachments)) {
+            for (const attachment of details.attachments) {
+                if (attachment?.type === 'image') {
+                    const imageSource = attachment.dataUrl || attachment.url;
+                    if (imageSource) {
+                        parts.push({
+                            type: 'input_image',
+                            image_url: { url: imageSource },
+                        });
+                    }
+                }
+            }
+        }
+
+        if (!parts.some(part => part.type === 'text') && typeof message?.text === 'string' && message.text.trim()) {
+            parts.unshift({ type: 'text', text: message.text });
+        }
+
+        return parts.length ? parts : null;
     }
 
     toBasicMessage(conversationMessage) {
         const author = this.convertAlias('display', 'author', conversationMessage.role);
-        return {
+        const basicMessage = {
             text: conversationMessage.message || '',
             author,
             type: conversationMessage.type || this.participants[author]?.defaultMessageType || 'message',
         };
+        if (conversationMessage.details) {
+            basicMessage.details = conversationMessage.details;
+        }
+        return basicMessage;
     }
 
     toMessages(history) {

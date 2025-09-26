@@ -26,6 +26,7 @@ import {
     getParent,
 } from '../utils/conversation.js';
 import path from 'path';
+import os from 'os';
 import { tryBoxen } from './boxen.js';
 import { getBackroomsFiles, parseBackroomsLog } from './backrooms.js';
 import { systemMessageBox, suggestionsBoxes, replaceWhitespace } from './ui.js';
@@ -189,6 +190,7 @@ let availableCommands = buildCommands({
     useEditor,
     editMessage,
     addMessages,
+    sendImageMessage,
     mergeUp,
     showHistory,
     stopSettingsWatcher,
@@ -311,7 +313,7 @@ async function conversation() {
             if (args[1] === '--help') {
                 return showCommandDocumentation(args[0]);
             }
-            return command.command(args);
+            return command.command(args, message);
         }
         logWarning('Command not found.');
         return conversation();
@@ -737,6 +739,199 @@ async function addMessages(newMessages = null) {
     await concatMessages(newMessages);
     showHistory();
     return conversation();
+}
+
+function expandHomePath(input) {
+    if (!input) {
+        return input;
+    }
+    if (input === '~') {
+        return os.homedir();
+    }
+    if (input.startsWith('~/')) {
+        return path.join(os.homedir(), input.slice(2));
+    }
+    return input;
+}
+
+function resolvePotentialImagePath(input) {
+    if (!input) {
+        return input;
+    }
+    const expanded = expandHomePath(input);
+    return path.isAbsolute(expanded) ? expanded : path.resolve(expanded);
+}
+
+function isExistingFile(filePath) {
+    if (!filePath) {
+        return false;
+    }
+    try {
+        return fs.statSync(filePath).isFile();
+    } catch {
+        return false;
+    }
+}
+
+function detectMimeType(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    switch (ext) {
+    case '.jpg':
+    case '.jpeg':
+        return 'image/jpeg';
+    case '.png':
+        return 'image/png';
+    case '.gif':
+        return 'image/gif';
+    case '.webp':
+        return 'image/webp';
+    case '.bmp':
+        return 'image/bmp';
+    case '.heic':
+        return 'image/heic';
+    case '.heif':
+        return 'image/heif';
+    case '.tif':
+    case '.tiff':
+        return 'image/tiff';
+    case '.avif':
+        return 'image/avif';
+    default:
+        return 'application/octet-stream';
+    }
+}
+
+function extractImageCommandComponents(raw) {
+    if (!raw) {
+        return { imagePath: null, promptText: '' };
+    }
+    const trimmed = raw.trim();
+    if (!trimmed) {
+        return { imagePath: null, promptText: '' };
+    }
+
+    const quotedMatch = trimmed.match(/^(["'])([\s\S]+?)\1\s*(.*)$/);
+    if (quotedMatch) {
+        return {
+            imagePath: quotedMatch[2]?.trim() || null,
+            promptText: quotedMatch[3]?.trim() || '',
+        };
+    }
+
+    const tokens = trimmed.split(/\s+/);
+    const pathTokens = [];
+    let imagePath = null;
+    let promptTokens = [];
+
+    for (let i = 0; i < tokens.length; i += 1) {
+        pathTokens.push(tokens[i]);
+        const candidateRaw = pathTokens.join(' ');
+        const candidateResolved = resolvePotentialImagePath(candidateRaw);
+        if (isExistingFile(candidateResolved)) {
+            imagePath = candidateRaw;
+            promptTokens = tokens.slice(i + 1);
+        }
+    }
+
+    if (!imagePath) {
+        imagePath = tokens.shift() || null;
+        promptTokens = tokens;
+    }
+
+    return {
+        imagePath,
+        promptText: promptTokens.join(' ').trim(),
+    };
+}
+
+async function sendImageMessage(rawInput) {
+    const payload = rawInput?.slice('!image'.length).trim();
+    if (!payload) {
+        logWarning('Usage: !image <image_path> [prompt]');
+        return conversation();
+    }
+
+    const { imagePath, promptText } = extractImageCommandComponents(payload);
+    if (!imagePath) {
+        logWarning('Usage: !image <image_path> [prompt]');
+        return conversation();
+    }
+
+    const promptForModel = promptText.trim();
+    const isRemoteImage = /^https?:\/\//i.test(imagePath);
+
+    let attachment;
+    if (isRemoteImage) {
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(imagePath);
+        } catch (error) {
+            logError(`Invalid image URL: ${error.message}`);
+            return conversation();
+        }
+        const rawBaseName = path.basename(parsedUrl.pathname) || parsedUrl.hostname || 'image';
+        let baseName = rawBaseName;
+        try {
+            baseName = decodeURIComponent(rawBaseName);
+        } catch {
+            baseName = rawBaseName;
+        }
+        attachment = {
+            type: 'image',
+            name: baseName,
+            url: parsedUrl.toString(),
+            sourceUrl: parsedUrl.toString(),
+        };
+    } else {
+        const resolvedPath = resolvePotentialImagePath(imagePath);
+        if (!isExistingFile(resolvedPath)) {
+            logWarning(`Image not found: ${imagePath}`);
+            return conversation();
+        }
+
+        const mimeType = detectMimeType(resolvedPath);
+        if (!mimeType.startsWith('image/')) {
+            logWarning('The provided file is not a supported image type.');
+            return conversation();
+        }
+
+        let fileBuffer;
+        try {
+            fileBuffer = await readFile(resolvedPath);
+        } catch (error) {
+            logError(`Failed to read image file: ${error.message}`);
+            return conversation();
+        }
+
+        const dataUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+        attachment = {
+            type: 'image',
+            name: path.basename(resolvedPath),
+            mimeType,
+            dataUrl,
+            sourcePath: resolvedPath,
+        };
+    }
+
+    const displayNote = `Image attached: ${attachment.name}`;
+    const displayText = promptForModel
+        ? `${promptForModel}\n\n${displayNote}`
+        : displayNote;
+
+    await concatMessages([
+        {
+            author: client.names.user.author,
+            text: displayText,
+            details: {
+                ...(promptForModel ? { prompt: promptForModel } : {}),
+                attachments: [attachment],
+            },
+        },
+    ]);
+
+    logSuccess(`Attached image ${attachment.name}${promptForModel ? ` with prompt: ${promptForModel}` : ''}`);
+    showHistory();
+    return generateMessage();
 }
 
 // -------- Backrooms Logs Import --------
