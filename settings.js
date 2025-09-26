@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const CONTEXT_FILES_DIR = path.resolve(__dirname, "contexts", "files");
 const CONFIG_FILE_PATH = path.resolve(__dirname, "config.json");
 
-const { models, globals } = loadModelPresets();
+const { models } = loadModelPresets();
 const fallbackModelAlias = getDefaultModelAlias() || "opus4";
 const userConfig = loadConfigFile(CONFIG_FILE_PATH);
 const configuredModelAlias = userConfig?.model && models[userConfig.model]
@@ -29,6 +29,10 @@ const configTemplateVariables = isPlainObject(userConfig?.vars) ? userConfig.var
 const templateVariables = resolveTemplateVariables(configTemplateVariables);
 
 const systemMessage = resolveSystemMessage(userConfig?.context);
+const parsedMaxTokens = Number(userConfig?.maxTokens);
+const maxTokens = Number.isFinite(parsedMaxTokens)
+  ? parsedMaxTokens
+  : 4096;
 
 function loadConfigFile(filePath) {
   try {
@@ -90,6 +94,7 @@ function resolveSystemMessage(contextSlug) {
 
 export default {
   config: userConfig,
+  maxTokens,
   templateVariables,
   // Cache settings (kept minimal). If namespace is null, it uses clientToUse
   cacheOptions: {
@@ -112,8 +117,7 @@ export default {
       modelOptions: {
         temperature: 1,
         stream: true,
-        // If you set globals.max_tokens in model_presets.json this can be omitted
-        max_tokens: globals?.max_tokens ?? 4096,
+        max_tokens: maxTokens,
       },
       messageOptions: {
         // Keep or point to your preferred system prompt
@@ -123,7 +127,7 @@ export default {
     claudeOptions: {
       modelOptions: {
         temperature: 1,
-        max_tokens: globals?.max_tokens ?? 4096,
+        max_tokens: maxTokens,
         stream: true,
       },
       messageOptions: {

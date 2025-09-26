@@ -1,7 +1,7 @@
 {
   "globals": {
     "context_length": 131072,
-    "max_tokens": 4096,
+    "max_tokens": 6000,
     "default_model_alias": "opus4"
   },
   "models": {

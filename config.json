@@ -1,6 +1,7 @@
 {
-  "context": "dreamsim2",
-  "model": "k2",
+  "context": "dreamsim4",
+  "model": "opus4",
+  "maxTokens": 4096,
   "vars": {
     "model1_company": "anthropic",
     "recurring_characters": "@file:recurring_characters.json"

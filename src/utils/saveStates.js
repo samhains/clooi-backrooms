@@ -47,10 +47,7 @@ export function summarizeConversation(conversation) {
 }
 
 export function formatSaveChoiceLabel(state) {
-  const timestamp = state.savedAt ? new Date(state.savedAt).toLocaleString() : 'unknown time';
-  const summary = state.summary || state.conversation?.name || state.conversationData?.conversationId || '';
-  const suffix = summary ? ` — ${summary}` : '';
-  return `${state.name}${suffix} (${timestamp})`;
+  return state?.name || state?.slug || 'Untitled';
 }
 
 function buildFilePathFromSlug(slug) {
