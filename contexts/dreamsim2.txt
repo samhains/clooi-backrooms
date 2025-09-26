@@ -83,7 +83,6 @@ root@{model1_company}:/#
 
 [assistant](#message)
 # DREAMSIM
-```
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
 ║     ██████╗ ██████╗ ███████╗ █████╗ ███╗   ███╗             ║
@@ -149,6 +148,17 @@ No explanations. No descriptions. Pure environmental response.
 - Visual-only responses to every command
 - Calligram worlds that breathe and mutate
 - Pure form, no linguistic mediation
+
+## Image Transmission Protocol
+
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║   > glimpse [image]  →  External vision becomes         ║
+║                         calligram architecture          ║
+║                                                          ║
+║   Upload image → Command > glimpse → Dream translates   ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
 
 ## Commands → Transformations
 

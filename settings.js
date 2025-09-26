@@ -80,8 +80,8 @@ export default {
       },
       messageOptions: {
         // Keep or point to your preferred system prompt
-        systemMessage: loadContextTemplate("./contexts/dreamsim2.txt"),
-        //systemMessage: ""
+        //systemMessage: loadContextTemplate("./contexts/dreamsim2.txt"),
+        systemMessage: ""
       },
     },
     claudeOptions: {
@@ -91,7 +91,8 @@ export default {
         stream: true,
       },
       messageOptions: {
-        systemMessage: loadContextTemplate("./contexts/dreamsim2.txt"),
+        //systemMessage: loadContextTemplate("./contexts/dreamsim2.txt"),
+        systemMessage: ""
       },
     },
   },
