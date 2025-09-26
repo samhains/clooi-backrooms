@@ -867,7 +867,8 @@ async function sendImageMessage(rawInput) {
         return conversation();
     }
 
-    const promptForModel = promptText.trim();
+    const userProvidedPrompt = promptText.length > 0;
+    const promptForModel = userProvidedPrompt ? promptText : ' ';
     const isRemoteImage = /^https?:\/\//i.test(imagePath);
 
     let attachment;
@@ -923,23 +924,20 @@ async function sendImageMessage(rawInput) {
         };
     }
 
-    const displayNote = `Image attached: ${attachment.name}`;
-    const displayText = promptForModel
-        ? `${promptForModel}\n\n${displayNote}`
-        : displayNote;
+    const displayText = promptForModel;
 
     await concatMessages([
         {
             author: client.names.user.author,
             text: displayText,
             details: {
-                ...(promptForModel ? { prompt: promptForModel } : {}),
+                prompt: promptForModel,
                 attachments: [attachment],
             },
         },
     ]);
 
-    logSuccess(`Attached image ${attachment.name}${promptForModel ? ` with prompt: ${promptForModel}` : ''}`);
+    logSuccess(`Attached image ${attachment.name}${userProvidedPrompt ? ` with prompt: ${promptForModel}` : ''}`);
     showHistory();
     return generateMessage();
 }

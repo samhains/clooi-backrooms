@@ -7,9 +7,15 @@ import { loadModelPresets, getDefaultModelAlias } from "./src/modelPresets.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CONTEXT_FILES_DIR = path.resolve(__dirname, "contexts", "files");
+const CONFIG_FILE_PATH = path.resolve(__dirname, "config.json");
 
 const { models, globals } = loadModelPresets();
-const defaultModelAlias = getDefaultModelAlias() || "opus4";
+const fallbackModelAlias = getDefaultModelAlias() || "opus4";
+const userConfig = loadConfigFile(CONFIG_FILE_PATH);
+const configuredModelAlias = userConfig?.model && models[userConfig.model]
+  ? userConfig.model
+  : null;
+const defaultModelAlias = configuredModelAlias || fallbackModelAlias;
 const defaultModel = models[defaultModelAlias] || {};
 const claudeModelAlias = defaultModel?.company === "anthropic"
   ? defaultModelAlias
@@ -19,10 +25,27 @@ const openRouterModelAlias = defaultModel?.company === "openrouter"
   : (getDefaultModelAlias("openrouter") || defaultModelAlias);
 const defaultClientToUse = defaultModel?.company === "anthropic" ? "claude" : "openrouter";
 
-const templateVariables = resolveTemplateVariables({
-  model1_company: defaultModel?.company || "openrouter",
-  recurring_characters: "@file:recurring_characters.json",
-});
+const configTemplateVariables = isPlainObject(userConfig?.vars) ? userConfig.vars : {};
+const templateVariables = resolveTemplateVariables(configTemplateVariables);
+
+const systemMessage = resolveSystemMessage(userConfig?.context);
+
+function loadConfigFile(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+    return isPlainObject(parsed) ? parsed : {};
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn(`Failed to read config.json: ${error.message}`);
+    }
+    return {};
+  }
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
 
 function resolveTemplateVariables(variables) {
   return Object.entries(variables).reduce((resolved, [key, value]) => {
@@ -52,7 +75,21 @@ function loadContextTemplate(relativePath) {
   return applyTemplateVariables(template);
 }
 
+function resolveSystemMessage(contextSlug) {
+  if (!contextSlug) {
+    return "";
+  }
+  const relativePath = `./contexts/${contextSlug}.txt`;
+  try {
+    return loadContextTemplate(relativePath);
+  } catch (error) {
+    console.warn(`Failed to load context template "${contextSlug}": ${error.message}`);
+    return "";
+  }
+}
+
 export default {
+  config: userConfig,
   templateVariables,
   // Cache settings (kept minimal). If namespace is null, it uses clientToUse
   cacheOptions: {
@@ -80,8 +117,7 @@ export default {
       },
       messageOptions: {
         // Keep or point to your preferred system prompt
-        //systemMessage: loadContextTemplate("./contexts/dreamsim2.txt"),
-        systemMessage: ""
+        systemMessage,
       },
     },
     claudeOptions: {
@@ -91,8 +127,7 @@ export default {
         stream: true,
       },
       messageOptions: {
-        //systemMessage: loadContextTemplate("./contexts/dreamsim2.txt"),
-        systemMessage: ""
+        systemMessage,
       },
     },
   },
