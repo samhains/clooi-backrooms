@@ -1,3 +1,5 @@
+import { listSaveStates } from './saveStates.js';
+
 export function getCid(data) {
     const convId = data.conversationId || data.jailbreakConversationId;
     if (!convId) {
@@ -8,53 +10,48 @@ export function getCid(data) {
 
 
 export async function getSavedStatesForConversation(conversationsCache, conversationId) {
-    const savedConversations = await conversationsCache.get('savedConversations') || [];
-    const savedStates = [];
-    for (const name of savedConversations) {
-        const conversationData = conversationsCache.get(name) || {};
-        if (conversationData && getCid(conversationData) === conversationId) {
-            savedStates.push({ name, conversationData });
-        }
-    }
-    return savedStates;
+    const states = await listSaveStates();
+    return states
+        .filter(state => getCid(state.conversationData || {}) === conversationId)
+        .map(state => ({ name: state.name, conversationData: state.conversationData }));
 }
 
 export async function savedStatesByConversation(conversationsCache) {
-    const savedConversations = await conversationsCache.get('savedConversations') || [];
+    const states = await listSaveStates();
     const savedStatesByConversation = {};
-    for (const stateName of savedConversations) {
-        const conversationData = await conversationsCache.get(stateName) || {};
+    for (const state of states) {
+        const conversationData = state.conversationData || {};
         const conversationId = getCid(conversationData);
         if (!conversationId) {
-            continue
+            continue;
         }
         if (!savedStatesByConversation[conversationId]) {
-            const conversation = await conversationsCache.get(conversationId) || {};
-            // const createdAtDate = new Date(conversation.createdAt);
-            // const conversationName = conversation.name || createdAtDate.toLocaleString();
-            const firstMessage = conversation.messages[0];
-            const conversationName = conversation.name || firstMessage.message?.substring(0, 50);
+            const conversation = state.conversation
+                || (await conversationsCache.get?.(conversationId))
+                || {};
+            const firstMessage = conversation.messages?.[0]?.message;
+            const conversationName = conversation.name
+                || (typeof firstMessage === 'string' ? firstMessage.substring(0, 50) : conversationId);
 
             savedStatesByConversation[conversationId] = {
                 name: conversationName,
                 states: [],
             };
         }
-        savedStatesByConversation[conversationId].states.push({ name: stateName, conversationData });
+        savedStatesByConversation[conversationId].states.push({
+            name: state.name,
+            slug: state.slug,
+            savedAt: state.savedAt,
+            conversationData,
+            filePath: state.filePath,
+        });
     }
     return savedStatesByConversation;
 }
 
 export async function getSavedIds(conversationsCache) {
-    const savedNames = await conversationsCache.get('savedConversations') || [];
-    const savedIds = [];
-    for (const name of savedNames) {
-        const conversationData = await conversationsCache.get(name) || {};
-        const conversationId = getCid(conversationData);
-        if (conversationId) {
-            savedIds.push(conversationId);
-        }
-    }
-    return savedIds;
+    const states = await listSaveStates();
+    return states
+        .map(state => getCid(state.conversationData || {}))
+        .filter(Boolean);
 }
-

@@ -13,7 +13,8 @@
     "server": "node src/server/app.js",
     "cli": "node src/cli/app.js",
     "dev:debug:server": "nodemon --ignore cache.json --inspect=0.0.0.0:9229 src/server/app.js",
-    "dev:debug:cli": "nodemon --ignore cache.json --inspect=0.0.0.0:9228 src/cli/app.js"
+    "dev:debug:cli": "nodemon --ignore cache.json --inspect=0.0.0.0:9228 src/cli/app.js",
+    "migrate:saves": "node scripts/migrate-saves.js"
   },
   "author": "waylaidwanderer",
   "license": "MIT",

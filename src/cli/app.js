@@ -27,6 +27,15 @@ import {
 } from '../utils/conversation.js';
 import path from 'path';
 import os from 'os';
+import {
+    listSaveStates,
+    findSaveState,
+    writeSaveState,
+    generateUniqueSlug,
+    formatSaveChoiceLabel,
+    readSaveStateBySlug,
+    summarizeConversation,
+} from '../utils/saveStates.js';
 import { tryBoxen } from './boxen.js';
 import { getBackroomsFiles, parseBackroomsLog } from './backrooms.js';
 import { systemMessageBox, suggestionsBoxes, replaceWhitespace } from './ui.js';
@@ -174,6 +183,7 @@ async function hasSiblings() {
 }
 
 import { buildCommands } from './commands.js';
+
 let availableCommands = buildCommands({
     showCommandDocumentation,
     importBackroomsLogFlow,
@@ -1080,9 +1090,10 @@ async function saveConversationState(name = null, data = conversationData) {
         logWarning('No conversation name.');
         return conversation();
     }
-    const savedConversations = await client.conversationsCache.get('savedConversations') || [];
-    // console.log(savedConversations);
-    if (savedConversations.includes(name)) {
+
+    const existingStates = await listSaveStates();
+    const existingState = await findSaveState(name);
+    if (existingState) {
         const { overwrite } = await inquirer.prompt([
             {
                 type: 'confirm',
@@ -1094,19 +1105,75 @@ async function saveConversationState(name = null, data = conversationData) {
         if (!overwrite) {
             return conversation();
         }
-    } else {
-        savedConversations.push(name);
-        await client.conversationsCache.set('savedConversations', savedConversations);
     }
+
+    const conversationId = getConversationId(data);
+    const conversationState = conversationId
+        ? await client.conversationsCache.get(conversationId)
+        : null;
+    const summary = summarizeConversation(conversationState) || conversationId;
+
+    const slug = existingState
+        ? existingState.slug
+        : await generateUniqueSlug(name, existingStates);
+
+    const { relativePath } = await writeSaveState({
+        name,
+        slug,
+        conversationData: data,
+        conversation: conversationState,
+        summary,
+    });
+
+    // Maintain in-memory cache for immediate use and backwards compatibility.
     await client.conversationsCache.set(name, data);
-    // await client.conversationsCache.set(name, conversationData);
-    logSuccess(`Saved state as "${name}".`);
+    if (conversationId && conversationState) {
+        await client.conversationsCache.set(conversationId, conversationState);
+    }
+    const refreshedStates = await listSaveStates();
+    await client.conversationsCache.set('savedConversations', refreshedStates.map(state => state.name));
+
+    logSuccess(`Saved state as "${name}" → ${relativePath}`);
+    return conversation();
+}
+
+async function applySavedState(savedState) {
+    const { conversationData, conversation: savedConversation, name, relativePath, filePath } = savedState;
+    if (!conversationData) {
+        logWarning('Saved state is missing conversation data.');
+        return conversation();
+    }
+    const conversationId = getConversationId(conversationData);
+    if (!conversationId) {
+        logWarning('Saved state does not include a conversation id.');
+        return conversation();
+    }
+
+    if (savedConversation) {
+        await client.conversationsCache.set(conversationId, savedConversation);
+    }
+    await client.conversationsCache.set(name, conversationData);
+    const currentStates = await listSaveStates();
+    await client.conversationsCache.set('savedConversations', currentStates.map(state => state.name));
+
+    await setConversationData({
+        ...conversationData,
+        conversationId,
+    });
+
+    const location = relativePath || (filePath ? path.relative(process.cwd(), filePath) : name);
+    logSuccess(`Resumed ${conversationId} from ${location}.`);
+    showHistory();
     return conversation();
 }
 
 async function loadConversationState(name = 'lastConversation') {
-    const data = (await client.conversationsCache.get(name)) || {};
+    const savedState = await findSaveState(name);
+    if (savedState) {
+        return applySavedState(savedState);
+    }
 
+    const data = (await client.conversationsCache.get(name)) || {};
     const conversationId = getConversationId(data);
 
     if (conversationId) {
@@ -1124,18 +1191,22 @@ async function loadConversationState(name = 'lastConversation') {
 
 async function loadByTree() {
     const conversationsWithSavedStates = await savedStatesByConversation(client.conversationsCache);
+    const conversationEntries = Object.entries(conversationsWithSavedStates);
+    if (conversationEntries.length === 0) {
+        logWarning('No saved conversations.');
+        return conversation();
+    }
+
     const { conversationId } = await inquirer.prompt([
         {
             type: 'list',
             name: 'conversationId',
             message: 'Select a tree:',
-            choices: Object.entries(conversationsWithSavedStates).map(([conversationId, conversationInfo]) => (
-                {
-                name: `${conversationInfo?.name} (${conversationInfo?.states?.length} saved states)`, 
-                value: conversationId,
-                }
-            )),
-            pageSize: Math.min(conversationsWithSavedStates.length * 2, 15),
+            choices: conversationEntries.map(([id, info]) => ({
+                name: `${info?.name || id} (${info?.states?.length || 0} saved states)`,
+                value: id,
+            })),
+            pageSize: Math.min(conversationEntries.length * 2, 15),
         },
     ]);
     if (!conversationId) {
@@ -1143,7 +1214,11 @@ async function loadByTree() {
         return conversation();
     }
 
-    const savedStatesInTree = conversationsWithSavedStates[conversationId].states.map(state => state.name)
+    const savedStatesInTree = conversationsWithSavedStates[conversationId]?.states || [];
+    if (savedStatesInTree.length === 0) {
+        logWarning('No saved conversations for this tree.');
+        return conversation();
+    }
 
     let name;
     const { conversationName } = await inquirer.prompt([
@@ -1151,7 +1226,10 @@ async function loadByTree() {
             type: 'list',
             name: 'conversationName',
             message: 'Select a conversation to load:',
-            choices: savedStatesInTree,
+            choices: savedStatesInTree.map(state => ({
+                name: state.savedAt ? `${state.name} (${new Date(state.savedAt).toLocaleString()})` : state.name,
+                value: state.name,
+            })),
             pageSize: Math.min(savedStatesInTree.length * 2, 20),
         },
     ]);
@@ -1160,10 +1238,55 @@ async function loadByTree() {
         logWarning('No conversation name.');
         return conversation();
     }
+    const targetMeta = savedStatesInTree.find(state => state.name === name);
+    if (targetMeta?.slug) {
+        const hydrated = await readSaveStateBySlug(targetMeta.slug);
+        if (hydrated) {
+            return applySavedState(hydrated);
+        }
+    }
     return loadConversationState(name);
 }
 
 async function loadSavedState(name = null) {
+    const states = await listSaveStates();
+    if (states.length > 0) {
+        await client.conversationsCache.set('savedConversations', states.map(state => state.name));
+
+        if (name) {
+            const target = await findSaveState(name);
+            if (!target) {
+                logWarning(`Saved conversation "${name}" not found.`);
+                return conversation();
+            }
+            return applySavedState(target);
+        }
+
+        const { selectedState } = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'selectedState',
+                message: 'Select a conversation to load:',
+                choices: states.map(state => ({
+                    name: formatSaveChoiceLabel(state),
+                    value: state.name,
+                })),
+                pageSize: Math.min(states.length * 2, 20),
+            },
+        ]);
+        if (!selectedState) {
+            logWarning('No conversation name.');
+            return conversation();
+        }
+        const target = states.find(state => state.name === selectedState);
+        if (!target) {
+            logWarning('Saved conversation not found.');
+            return conversation();
+        }
+        return applySavedState(target);
+    }
+
+    // Fallback: legacy cache-only saves.
     const savedConversations = await client.conversationsCache.get('savedConversations') || [];
     if (savedConversations.length === 0) {
         logWarning('No saved conversations.');
