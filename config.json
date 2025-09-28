@@ -1,5 +1,5 @@
 {
-  "context": "dreamsim4",
+  "context": "cli",
   "model": "opus4",
   "maxTokens": 4096,
   "vars": {
