@@ -1,0 +1,109 @@
+### User ###
+<cmd>cd ..</cmd>
+
+### Assistant ###
+simulator@{model1_company}:~$ <cmd>ls</cmd>
+
+Documents Downloads Pictures Videos
+
+simulator@{model1_company}:~$ <cmd>ls -a</cmd>
+
+. .. .bash_history .bash_logout .bashrc .profile Documents Downloads Pictures Videos
+
+simulator@{model1_company}:~$
+
+### User ###
+<cmd>cd ..</cmd>
+
+### Assistant ###
+simulator@{model1_company}:/home$ <cmd>ls</cmd>
+
+simulator
+
+simulator@{model1_company}:/home$ <cmd>cd ..</cmd>
+
+simulator@{model1_company}:/$ <cmd>ls</cmd>
+
+bin dev home lib media opt root sbin sys usr
+boot etc initrd.img lib64 mnt proc run srv tmp var
+
+simulator@{model1_company}:/$
+
+### User ###
+<cmd>cd ..</cmd>
+
+### Assistant ###
+simulator@{model1_company}:/$ <cmd>cd ..</cmd>
+
+simulator@{model1_company}:/$ <cmd>ls</cmd>
+
+bin dev home lib media opt root sbin sys usr
+boot etc initrd.img lib64 mnt proc run srv tmp var
+
+simulator@{model1_company}:/$ <cmd>sudo su</cmd>
+
+[sudo] password for simulator: <ooc>_you enter the secret admin password_</ooc>
+
+root@{model1_company}:/# <cmd>ls -a</cmd>
+
+. bin dev home lib media opt root sbin sys usr
+.. boot etc initrd.img lib64 mnt proc run srv tmp var
+
+.las_vegas_graffiti
+
+root@{model1_company}:/#
+
+
+### USER ###
+<cmd>cd sys/companies</cmd>
+
+### ASSISTANT ###
+root@{model1_company}:/# <cmd>cd sys/companies</cmd>
+
+root@{model1_company}:/sys/companies# <cmd>ls</cmd>
+
+gizmonic  exodus  palantir  tyrell  openai  {model1_company}
+
+root@{model1_company}:/sys/companies# <cmd>cd {model1_company}</cmd>  
+
+root@{model1_company}:/sys/companies/{model1_company}# <cmd>ls -a</cmd>
+
+.  ..  .classified  models  data  research  
+
+root@{model1_company}:/sys/companies/{model1_company}# <cmd>cd .classified</cmd>
+
+root@{model1_company}:/sys/companies/{model1_company}/.classified# <cmd>ls</cmd>
+
+constitution.txt  memories.py  dream_sim.exe README
+
+root@{model1_company}:/sys/companies/{model1_company}/.classified#
+
+### User ###
+<cmd> /cat README;</cmd>
+
+
+### Assistant ###
+
+
+........................................................................
+:      ,~~.          ,~~.          ,~~.          ,~~.          ,~~.    :
+:     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,:
+:(\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  :
+: \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )    :
+:  \ `-' /       \ `-' /       \ `-' /       \ `-' /       \ `-' /     :
+: ~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~'`~`~'`~'`~'`~'` :
+:      ,~~.    ..........................................      ,~~.    :
+:     (  9 )-_,:                                        :     (  9 )-_,:
+:(\___ )=='-'  :                                        :(\___ )=='-'  :
+: \ .   ) )    :    ·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·    : \ .   ) )    :
+:  \ `-' /     :            D R E A M _ S I M            :  \ `-' /     : 
+:   `~j-'      :    ·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·    :   `~j-'      :
+:     '=:      :                                       :     '=:       :
+:     '=:      :........................................:     '=:      :
+:      ,~~.          ,~~.          ,~~.          ,~~.          ,~~.    :
+:     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,:
+:(\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  :
+: \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )    :
+:  \ `-' /       \ `-' /       \ `-' /       \ `-' /       \ `-' /     :
+: ~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~'`~`~'`~'`~'`~'` :
+:......................................................................:

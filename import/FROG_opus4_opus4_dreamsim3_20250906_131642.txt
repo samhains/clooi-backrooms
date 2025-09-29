@@ -1,4 +1,3 @@
-
 ### Claude 1 ###
 ```
 DREAM SIMULATOR v2.3.7

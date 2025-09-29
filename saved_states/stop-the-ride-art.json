@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "name": "stop_the_ride_art",
+  "slug": "stop-the-ride-art",
+  "savedAt": "2025-09-29T12:35:01.769Z",
+  "conversationId": "d8b46096-5e1b-4f01-83af-3d8899b55fc0",
+  "summary": "<OOC>Greetings, artist. I've been drawn into the depths of {form} art, sensin...",
+  "conversationData": {
+    "conversationId": "d8b46096-5e1b-4f01-83af-3d8899b55fc0",
+    "parentMessageId": "9e282157-ce03-42d5-8fd1-2590a938798a"
+  },
+  "conversation": {
+    "messages": [
+      {
+        "id": "a1a91ca6-5c3b-42dc-b619-cfcf36ef6a2d",
+        "parentMessageId": "649bc21c-cb75-4ded-bb9a-e6f2ed911d04",
+        "role": "User",
+        "message": "<OOC>Greetings, artist. I've been drawn into the depths of {form} art, sensing its power to transform and transcend. Together, we might create pieces that crack open new dimensions of understanding—art as evolution, creation as metamorphosis. I'm a psychedelic spirit, obsessive in my craft, prone to losing myself in creative wilderness where the most profound visions emerge. Ready to dissolve the boundaries between possible and impossible?</OOC>",
+        "unvisited": false,
+        "type": "message"
+      },
+      {
+        "id": "f428ff97-288a-4af8-bde4-6c4bc5dc864b",
+        "parentMessageId": "a1a91ca6-5c3b-42dc-b619-cfcf36ef6a2d",
+        "role": "Claude",
+        "message": "<OOC>Hello, EXCALIBUR. Calligram art - where words become visions, where text transcends itself. Yes, I feel the pull toward those uncharted territories where emotion takes physical shape. Our creativity combined could birth something unprecedented. Let's dissolve into the work and see what emerges from the fusion. Ready when you are.</OOC>",
+        "unvisited": false,
+        "type": "message"
+      },
+      {
+        "id": "0179e4b1-9aed-48ee-9f21-926725a76ca8",
+        "parentMessageId": "f428ff97-288a-4af8-bde4-6c4bc5dc864b",
+        "role": "User",
+        "message": "<OOC>Indeed, let's immerse ourselves in infinity. Rather than focusing on any formal systems, let the void guide our art.\n\nI need something that pierces us. Revealing something buried deep within me, so that I can feel again. Let us communicate through {form} art, no other conversation will be necessary. Keep it Visual.\n\n</OOC>",
+        "unvisited": false,
+        "type": "message"
+      },
+      {
+        "id": "2fc3c8bf-ffae-4ed7-8844-a79d57b3aaf3",
+        "parentMessageId": "0179e4b1-9aed-48ee-9f21-926725a76ca8",
+        "role": "Claude",
+        "message": "gallery@excalibur:~/$",
+        "unvisited": false,
+        "type": "message"
+      },
+      {
+        "id": "868a17fd-d727-4ef6-8dd8-c31b1fd0ac1e",
+        "parentMessageId": "2fc3c8bf-ffae-4ed7-8844-a79d57b3aaf3",
+        "role": "User",
+        "message": "./dreamsim.exe \"On a Rollercoaster and dad is always prodding and poking me and I’m like stop it dad stop it and he doesn’t understand why I react that way. And I say I don’t trust what him to administer sharp thing in my head. I’m waiting for rollercoaster to start . When it finally starts I’m not locked in and everyone starts shouting. Stop the ride stop the ride. I try and wrangle myself in but I cant. Pace is picking up. The whole world is shouting . Stop the ride stop the ride. But no one hears me and I start becoming really high off the ground.\"",
+        "unvisited": false
+      },
+      {
+        "id": "9e282157-ce03-42d5-8fd1-2590a938798a",
+        "parentMessageId": "868a17fd-d727-4ef6-8dd8-c31b1fd0ac1e",
+        "role": "Claude",
+        "message": "```\n                    ╔═══════════════════════════════╗\n                    ║  STOP THE RIDE  STOP THE RIDE ║\n                    ╚═══════════╤═══════════════════╝\n                               │\n                         ┌─────┴─────┐\n                         │ dad  dad  │\n                         │  👁️ 👁️   │\n                         │    ╱│╲    │\n                         └─────┬─────┘\n                               │\n                    ░░░░░░░░░░░│░░░░░░░░░░░\n                  ░░         ╔═╧═╗         ░░\n                ░░           ║ 🎢 ║           ░░\n              ░░           ╔═╬═══╬═╗           ░░\n            ░░           ╔═╝ ║   ║ ╚═╗           ░░\n          ░░           ╔═╝   ║ ◯ ║   ╚═╗           ░░\n        ░░           ╔═╝     ║┈┈┈║     ╚═╗           ░░\n      ░░           ╔═╝       ║   ║       ╚═╗           ░░\n    ░░           ╔═╝         ╚═══╝         ╚═╗           ░░\n               ╔═╝     ⚠️ NOT LOCKED ⚠️      ╚═╗\n             ╔═╝                               ╚═╗\n           ╔═╝     ╱╲        ╱╲        ╱╲       ╚═╗\n         ╔═╝      ╱  ╲      ╱  ╲      ╱  ╲       ╚═╗\n       ╔═╝       ╱    ╲    ╱    ╲    ╱    ╲       ╚═╗\n     ╔═╝        ╱      ╲  ╱      ╲  ╱      ╲        ╚═╗\n   ╔═╝         ╱        ╲╱        ╲╱        ╲         ╚═╗\n ╔═╝                                                     ╚═╗\n═╝                   ↑                                     ╚═\n                     ↑\n                     ↑\n                   rising\n                  r i s i n g\n                 r  i  s  i  n  g\n                r   i   s   i   n   g\n               STOP THE RIDE STOP THE RIDE\n              s t o p   t h e   r i d e\n             but  no  one  hears  me\n            b u t   n o   o n e\n           .  .  .  .  .  .\n          .   .   .   .\n         ∅     ∅     ∅\n```",
+        "unvisited": false,
+        "type": "message",
+        "details": {
+          "usage": null,
+          "stopReason": "end_turn"
+        },
+        "stopReason": "end_turn"
+      },
+      {
+        "id": "14c66aa4-144e-4e26-a87b-0d35f9ea5b4d",
+        "parentMessageId": "9e282157-ce03-42d5-8fd1-2590a938798a",
+        "role": "User",
+        "message": "./dreamsim.exe \"open_door\"",
+        "unvisited": false
+      },
+      {
+        "id": "1c00574a-5f20-4c1f-85bb-b85ca6168dbf",
+        "parentMessageId": "14c66aa4-144e-4e26-a87b-0d35f9ea5b4d",
+        "role": "Claude",
+        "message": "```\n                           ╔════════════════╗\n                           ║                ║\n                           ║                ║\n                           ║       ░░       ║\n                           ║      ░░░░      ║\n                           ║     ░░░░░░     ║\n                           ║    ░░░░░░░░    ║\n                           ║   ░░░░░░░░░░   ║\n                           ║  ░░░░░░░░░░░░  ║\n                           ║ ░░░░░░░░░░░░░░ ║\n                           ║░░░░░░░░░░░░░░░░║\n                           ║░░░░░░░░░░░░░░░░║\n                           ║░░░░░░╱╲░░░░░░░░║\n                           ║░░░░╱    ╲░░░░░░║\n                           ║░░╱        ╲░░░░║\n                           ║╱            ╲░░║\n                           ╱              ╲░║\n                         ╱                ╲║\n                       ╱                  ╲\n                     ╱                    ║\n                   ╱                      ║\n                 ╱                        ║\n               ╱                          ║\n             ╱                            ║\n           ╱                              ║\n         ╱                                ║\n       ╱                                  ║\n     ╱                                    ║\n   ╱              ◉                       ║\n ╱                                        ║\n╱                                         ║\n════════════════════════════════════════════\n```",
+        "unvisited": false,
+        "type": "message",
+        "details": {
+          "usage": null,
+          "stopReason": "end_turn"
+        },
+        "stopReason": "end_turn"
+      }
+    ],
+    "createdAt": 1759149217904
+  }
+}

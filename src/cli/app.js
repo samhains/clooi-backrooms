@@ -17,6 +17,7 @@ import inquirer from 'inquirer';
 import inquirerAutocompletePrompt from 'inquirer-autocomplete-prompt';
 import crypto from 'crypto';
 import { getClient, getClientSettings } from './util.js';
+import { applyTemplateVariables } from '../utils/templateVars.js';
 import { getCid, savedStatesByConversation, getSavedIds } from '../utils/cache.js';
 import {
     getMessagesForConversation,
@@ -972,7 +973,12 @@ async function importBackroomsLogFlow(targetPath = null) {
         }
 
         const raw = fs.readFileSync(filePath, 'utf8');
-        const msgs = parseBackroomsLog(raw, { user: client.names.user.author, bot: client.names.bot.author });
+        const hydrated = applyTemplateVariables(raw, settings?.templateVariables);
+        const msgs = parseBackroomsLog(hydrated, {
+            user: client.names.user.author,
+            bot: client.names.bot.author,
+            system: client.names.system?.author,
+        });
         if (!msgs.length) {
             logWarning('Could not parse any messages from the selected log.');
             return conversation();

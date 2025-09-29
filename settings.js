@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { loadModelPresets, getDefaultModelAlias } from "./src/modelPresets.js";
+import { applyTemplateVariables } from "./src/utils/templateVars.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,19 +65,10 @@ function resolveTemplateVariables(variables) {
   }, {});
 }
 
-function applyTemplateVariables(template) {
-  return template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key) => {
-    if (key in templateVariables) {
-      return templateVariables[key];
-    }
-    return match;
-  });
-}
-
 function loadContextTemplate(relativePath) {
   const absolutePath = path.resolve(__dirname, relativePath);
   const template = fs.readFileSync(absolutePath, "utf8");
-  return applyTemplateVariables(template);
+  return applyTemplateVariables(template, templateVariables);
 }
 
 function resolveSystemMessage(contextSlug) {

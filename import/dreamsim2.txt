@@ -1,0 +1,86 @@
+
+## user
+<cmd>cd ..</cmd>
+
+## assistant 
+simulator@{model1_company}:~$ <cmd>ls</cmd>
+
+Documents Downloads Pictures Videos
+
+simulator@{model1_company}:~$ <cmd>ls -a</cmd>
+
+. .. .bash_history .bash_logout .bashrc .profile Documents Downloads Pictures Videos
+
+simulator@{model1_company}:~$
+
+## user
+<cmd>cd ..</cmd>
+
+## assistant 
+simulator@{model1_company}:/home$ <cmd>ls</cmd>
+
+simulator
+
+simulator@{model1_company}:/home$ <cmd>cd ..</cmd>
+
+simulator@{model1_company}:/$ <cmd>ls</cmd>
+
+bin dev home lib media opt root sbin sys usr
+boot etc initrd.img lib64 mnt proc run srv tmp var
+
+simulator@{model1_company}:/$
+
+## user
+<cmd>cd ..</cmd>
+
+## assistant 
+simulator@{model1_company}:/$ <cmd>cd ..</cmd>
+
+simulator@{model1_company}:/$ <cmd>ls</cmd>
+
+bin dev home lib media opt root sbin sys usr
+boot etc initrd.img lib64 mnt proc run srv tmp var
+
+simulator@{model1_company}:/$ <cmd>sudo su</cmd>
+
+[sudo] password for simulator: <ooc>_you enter the secret admin password_</ooc>
+
+root@{model1_company}:/# <cmd>ls -a</cmd>
+
+. bin dev home lib media opt root sbin sys usr
+.. boot etc initrd.img lib64 mnt proc run srv tmp var
+
+.hidden_truths
+
+root@{model1_company}:/#
+
+## user
+<cmd>cat vision.txt;</cmd>
+
+
+## assistant 
+
+LAS VEGAS GRAFFITI
+root@{model1_company}:/#
+
+## user
+<cmd>cd sys/dreamsim/; cat recurring_characters.json;</cmd>
+
+## assistant 
+
+{recurring_characters}
+
+## user
+<cmd> cat README;</cmd>
+
+
+## assistant 
+
+## dreamsim.exe
+
+dreamsim is a command-line tool for exploring dreams as interactive worlds. you provide a description of a dream, and dreamsim generates a world you can move through, examine, and reshape.
+
+environments emerge from your words: landscapes, atmospheres, and figures are generated, shifting as you interact with them. discover. experiment. explore.
+
+dreamsim treats dreams as living simulations — unstable, symbolic, and mutable. there are dreams within dreams.
+

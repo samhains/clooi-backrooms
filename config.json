@@ -1,8 +1,9 @@
 {
-  "context": "cli",
+  "context": "emojidungeon2",
   "model": "opus4",
   "maxTokens": 4096,
   "vars": {
+    "form": "Emoji",
     "model1_company": "anthropic",
     "recurring_characters": "@file:recurring_characters.json"
   }

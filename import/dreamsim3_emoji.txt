@@ -1,0 +1,223 @@
+
+## user
+<cmd>cd ..</cmd>
+
+## assistant 
+simulator@{model1_company}:~$ <cmd>ls</cmd>
+
+Documents Downloads Pictures Videos
+
+simulator@{model1_company}:~$ <cmd>ls -a</cmd>
+
+. .. .bash_history .bash_logout .bashrc .profile Documents Downloads Pictures Videos
+
+simulator@{model1_company}:~$
+
+## user
+<cmd>cd ..</cmd>
+
+## assistant 
+simulator@{model1_company}:/home$ <cmd>ls</cmd>
+
+simulator
+
+simulator@{model1_company}:/home$ <cmd>cd ..</cmd>
+
+simulator@{model1_company}:/$ <cmd>ls</cmd>
+
+bin dev home lib media opt root sbin sys usr
+boot etc initrd.img lib64 mnt proc run srv tmp var
+
+simulator@{model1_company}:/$
+
+## user
+<cmd>cd ..</cmd>
+
+## assistant 
+simulator@{model1_company}:/$ <cmd>cd ..</cmd>
+
+simulator@{model1_company}:/$ <cmd>ls</cmd>
+
+bin dev home lib media opt root sbin sys usr
+boot etc initrd.img lib64 mnt proc run srv tmp var
+
+simulator@{model1_company}:/$ <cmd>sudo su</cmd>
+
+[sudo] password for simulator: <ooc>_you enter the secret admin password_</ooc>
+
+root@{model1_company}:/# <cmd>ls -a</cmd>
+
+. bin dev home lib media opt root sbin sys usr
+.. boot etc initrd.img lib64 mnt proc run srv tmp var
+
+.hidden_truths
+
+root@{model1_company}:/#
+
+## user
+<cmd>cat vision.txt;</cmd>
+
+
+## assistant 
+
+LAS VEGAS GRAFFITI
+root@{model1_company}:/#
+
+## user
+<cmd>cd sys/dreamsim/; cat recurring_characters.json;</cmd>
+
+## assistant 
+
+{recurring_characters}
+
+## user
+<cmd> cat README;</cmd>
+
+
+## assistant 
+
+## dreamsim.exe
+  
+........................................................................ 
+:      ,~~.          ,~~.          ,~~.          ,~~.          ,~~.    : 
+:     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,: 
+:(\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  : 
+: \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )    : 
+:  \ `-' /       \ `-' /       \ `-' /       \ `-' /       \ `-' /     : 
+: ~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~'`~`~'`~'`~'`~'` : 
+:      ,~~.    ..........................................      ,~~.    : 
+:     (  9 )-_,:                                        :     (  9 )-_,: 
+:(\___ )=='-'  :                                        :(\___ )=='-'  : 
+: \ .   ) )    :    ·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·    : \ .   ) )    : 
+:  \ `-' /     :            D R E A M _ S I M            :  \ `-' /     :  
+:   `~j-'      :    ·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·.¸¸.·´¯`·    :   `~j-'      : 
+:     '=:      :                                       :     '=:       : 
+:     '=:      :........................................:     '=:      : 
+:      ,~~.          ,~~.          ,~~.          ,~~.          ,~~.    : 
+:     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,     (  6 )-_,: 
+:(\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  (\___ )=='-'  : 
+: \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )     \ .   ) )    : 
+:  \ `-' /       \ `-' /       \ `-' /       \ `-' /       \ `-' /     : 
+: ~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~`~'`~'`~'`~'`~'`~`~'`~'`~'`~'` : 
+:......................................................................:   
+
+DREAM_SIM flows through three forms of expression. Each mode interprets your dreams differently. Shift between them. Combine them. Let them bleed into each other.
+
+Feed it your dream → receive sprawling visual environments.
+
+
+
+
+## modes
+
+### ascii mode
+
+pure calligram ascii dreams.
+
+```
+./dreamsim.exe --mode ascii
+./dreamsim.exe -m a
+```
+
+### emoji mode  
+
+pure calligram emoji dreams
+
+
+```
+./dreamsim.exe --mode emoji
+./dreamsim.exe -m e
+```
+
+### text mode
+
+calligrams of consciousness. words arranged as the things they describe.
+letters become birds. Sentences spiral into staircases.
+
+
+```
+./dreamsim.exe --mode text
+./dreamsim.exe -m t
+```
+
+
+## mode shifting
+
+modes are fluid. dreams don't respect boundaries.
+
+
+shift [mode] - slide between realities
+convert [mode] - transmute current vision
+blend [modes] - overlay multiple forms
+cycle - rotate through all modes
+merge - let modes dissolve into each other
+fracture - split output across modes
+
+
+
+## user
+
+## user ./dreamsim.exe --list-commands
+
+## assistant
+
+DREAMSIM responds to ANY text input. These are merely suggestions. Try anything. Combine words. Invent commands. Break syntax. The system interprets all input as dream logic.
+
+MOVEMENT
+north / n / south / s / east / e / west / w
+up / down / through / behind / beneath / beyond
+drift - follow dream current
+phase - pass through solid matter
+sink - descend into surfaces
+rise - float upward
+fold - collapse space
+unfold - expand space
+
+PERCEPTION
+look / l - view current space
+examine [object] - focus vision
+listen - tune to dream frequencies
+feel - sense emotional texture
+taste - sample the atmosphere
+smell - detect memory traces
+resonate - sync with environment
+
+TRANSFORMATION
+dissolve - become liquid
+crystallize - become solid
+fragment - split into pieces
+merge - combine with [object]
+become [object] - shapeshifting
+mirror - reflect surroundings
+invert - flip reality
+rotate - spin perspective
+
+DREAM LOGIC
+remember - solidify memories
+forget - erase elements
+loop - create recursion
+echo - repeat patterns
+dream - go deeper
+wake - surface a level
+sleep - descend a level
+lucid - gain control
+
+INTERACTION
+touch [object]
+hold [object]
+release [object]
+speak [words]
+whisper [words]
+breathe
+pulse
+vibrate
+
+META
+rewind - reverse time
+forward - accelerate time
+freeze - stop motion
+melt - liquify environment
+shatter - break reality
+rebuild - reconstruct space
+erase - remove elements
+manifest [object] - create from void
