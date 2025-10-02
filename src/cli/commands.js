@@ -9,6 +9,7 @@ export function buildCommands(api) {
     importBackroomsLogFlow,
     retryResponse,
     generateMessage,
+    composeAiMessage,
     saveConversationState,
     loadSavedState,
     newConversation,
@@ -68,6 +69,14 @@ export function buildCommands(api) {
       usage: '!gen',
       description: 'Generate a response without sending an additional user message',
       command: async () => generateMessage(),
+    },
+    {
+      name: '!ai - Draft user response with AI',
+      value: '!ai',
+      usage: '!ai [--context <slug>] [instructions]',
+      description:
+        'Draft the next user message using an AI composer.\n\t--context <slug>: Optional context slug (without .txt) from ./contexts. Defaults to config.json aiContext or the active conversation context.\n\t[instructions]: Optional extra guidance for this draft.',
+      command: async (args, raw) => composeAiMessage(args, raw),
     },
     {
       name: '!save - Save conversation state',

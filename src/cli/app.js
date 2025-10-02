@@ -46,6 +46,9 @@ import { conversationStart as conversationStartBox, historyBoxes as renderHistor
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const pathToSettings = arg?.split('=')[1] ?? './settings.js';
 
+const CONTEXTS_DIR = path.resolve('./contexts');
+const CONTEXT_EXTENSION = '.txt';
+
 let settings;
 let watcher;
 
@@ -142,6 +145,39 @@ async function updateSettings(path) {
 }
 
 
+function sanitizeContextSlug(rawSlug) {
+    if (!rawSlug) {
+        return null;
+    }
+    const trimmed = rawSlug.trim();
+    if (!trimmed) {
+        return null;
+    }
+    const withoutExt = trimmed.toLowerCase().endsWith(CONTEXT_EXTENSION)
+        ? trimmed.slice(0, -CONTEXT_EXTENSION.length)
+        : trimmed;
+    if (!/^[A-Za-z0-9_-]+$/.test(withoutExt)) {
+        throw new Error('Context name may only include letters, numbers, underscores, or hyphens.');
+    }
+    return withoutExt;
+}
+
+async function loadContextPrompt(slug) {
+    const normalized = sanitizeContextSlug(slug);
+    if (!normalized) {
+        throw new Error('No context slug provided.');
+    }
+    const contextPath = path.resolve(CONTEXTS_DIR, `${normalized}${CONTEXT_EXTENSION}`);
+    const template = await readFile(contextPath, 'utf8');
+    const templateVars = settings?.templateVariables || {};
+    return {
+        prompt: applyTemplateVariables(template, templateVars),
+        slug: normalized,
+        path: contextPath,
+    };
+}
+
+
 
 async function loadSettings() {
     
@@ -190,6 +226,7 @@ let availableCommands = buildCommands({
     importBackroomsLogFlow,
     retryResponse,
     generateMessage,
+    composeAiMessage,
     saveConversationState,
     loadSavedState,
     newConversation,
@@ -720,6 +757,164 @@ async function addMessage(message, conversationId = getConversationId()) {
     convo.messages.push(message);
     await client.conversationsCache.set(conversationId, convo);
     await pullFromCache();
+}
+
+function parseAiCommandArgs(args = []) {
+    if (!Array.isArray(args) || args.length <= 1) {
+        return {
+            contextSlug: null,
+            instructions: '',
+        };
+    }
+
+    const tokens = args.slice(1);
+    let contextSlug = null;
+    const instructionParts = [];
+
+    for (let index = 0; index < tokens.length; index += 1) {
+        const token = tokens[index];
+        if (!token) {
+            continue;
+        }
+
+        if (token === '--context' || token === '-c') {
+            const next = tokens[index + 1];
+            if (next) {
+                contextSlug = next;
+                index += 1;
+            }
+            continue;
+        }
+
+        const contextMatch = token.match(/^(?:--context|-c)=(.+)$/);
+        if (contextMatch) {
+            contextSlug = contextMatch[1];
+            continue;
+        }
+
+        instructionParts.push(token);
+    }
+
+    return {
+        contextSlug,
+        instructions: instructionParts.join(' ').trim(),
+    };
+}
+
+async function composeAiMessage(args = [], rawInput = '') {
+    const { contextSlug: explicitContextSlug, instructions: parsedInstructions } = parseAiCommandArgs(args);
+    const configuredContext = settings?.config?.aiContext || settings?.config?.context || null;
+    const contextSlug = explicitContextSlug || configuredContext;
+
+    let contextPrompt = null;
+    if (contextSlug) {
+        try {
+            ({ prompt: contextPrompt } = await loadContextPrompt(contextSlug));
+        } catch (error) {
+            if (explicitContextSlug) {
+                logWarning(`Failed to load context "${contextSlug}": ${error.message}`);
+                return conversation();
+            }
+            const fallbackPrompt = clientOptions?.messageOptions?.systemMessage;
+            if (typeof fallbackPrompt === 'string' && fallbackPrompt.trim()) {
+                contextPrompt = fallbackPrompt.trim();
+            } else {
+                logWarning(`Failed to load configured aiContext "${contextSlug}": ${error.message}`);
+                return conversation();
+            }
+        }
+    } else {
+        const fallbackPrompt = clientOptions?.messageOptions?.systemMessage;
+        if (typeof fallbackPrompt === 'string' && fallbackPrompt.trim()) {
+            contextPrompt = fallbackPrompt.trim();
+        }
+    }
+
+    const instructionText = parsedInstructions;
+
+    await pullFromCache();
+
+    const historyMessages = client.toMessages(getHistory());
+    const swappedMessages = historyMessages.map(message => {
+        const swappedAuthor = message.author === client.names.bot.author
+            ? client.names.user.author
+            : message.author === client.names.user.author
+                ? client.names.bot.author
+                : message.author;
+        return {
+            ...message,
+            author: swappedAuthor,
+        };
+    });
+
+    const systemMessage = contextPrompt
+        ? client.buildMessage(contextPrompt, client.names.system.author)
+        : null;
+    const instructionMessage = instructionText
+        ? client.buildMessage(instructionText, client.names.user.author)
+        : null;
+
+    const composeModelOptions = {
+        ...clientOptions.modelOptions,
+        stream: false,
+    };
+
+    const steeringOption = Object.keys(steeringFeatures).length
+        ? {
+            steering: {
+                feature_levels: steeringFeatures,
+            },
+        }
+        : {};
+
+    let replies;
+    try {
+        const apiParams = {
+            ...composeModelOptions,
+            ...steeringOption,
+            ...client.buildApiParams(instructionMessage, swappedMessages, systemMessage),
+        };
+
+        ({ replies } = await client.callAPI(apiParams, {}));
+    } catch (error) {
+        logError(`Failed to generate AI draft: ${error.message}`);
+        return conversation();
+    }
+
+    const replyKeys = Object.keys(replies || {});
+    const draft = replyKeys.length ? (replies[replyKeys[0]] || '').trim() : '';
+
+    if (!draft) {
+        logWarning('AI draft was empty.');
+        return conversation();
+    }
+
+    console.log(tryBoxen(replaceWhitespace(draft), {
+        title: client.names.user.display || 'You',
+        padding: 0.7,
+        margin: {
+            top: 1, bottom: 0, left: 1, right: 1,
+        },
+        dimBorder: true,
+    }));
+
+    const { shouldSend } = await inquirer.prompt([
+        {
+            type: 'confirm',
+            name: 'shouldSend',
+            message: 'Send this AI-drafted message?',
+            default: true,
+        },
+    ]);
+
+    if (!shouldSend) {
+        logWarning('Draft discarded.');
+        return conversation();
+    }
+
+    await concatMessages(draft);
+    showHistory();
+    return generateMessage();
 }
 
 async function concatMessages(newMessages) {

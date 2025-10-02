@@ -1,5 +1,6 @@
 {
-  "context": "emojidungeon2",
+  "context": "cli",
+  "aiContext": "cli",
   "model": "sonnet4",
   "maxTokens": 4096,
   "vars": {
