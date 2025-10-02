@@ -1,6 +1,6 @@
 {
   "context": "emojidungeon2",
-  "model": "opus4",
+  "model": "sonnet4",
   "maxTokens": 4096,
   "vars": {
     "form": "Emoji",

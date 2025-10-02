@@ -6,7 +6,7 @@
   },
   "models": {
     "sonnet4": {
-      "api_name": "claude-sonnet-4-20250514",
+      "api_name": "claude-sonnet-4-5",
       "display_name": "Claude Sonnet",
       "company": "anthropic"
     },
