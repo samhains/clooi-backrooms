@@ -61,6 +61,7 @@ let clientOptions;
 let navigationHistory = [];
 let localConversation = {};
 let steeringFeatures = {};
+let currentLoadedSave = null;
 
 
 async function initializeSettingsWatcher(path) {
@@ -229,6 +230,7 @@ let availableCommands = buildCommands({
     composeAiMessage,
     saveConversationState,
     loadSavedState,
+    systemPromptSelection,
     newConversation,
     rewind,
     selectChildMessage,
@@ -1288,14 +1290,19 @@ async function mergeUp() {
 
 async function saveConversationState(name = null, data = conversationData) {
     if (!name) {
-        const { conversationName } = await inquirer.prompt([
-            {
-                type: 'input',
-                name: 'conversationName',
-                message: 'Enter a name for the savepoint:',
-            },
-        ]);
-        name = conversationName;
+        if (currentLoadedSave) {
+            name = currentLoadedSave;
+            logSuccess(`Auto-saving to currently loaded save: ${name}`);
+        } else {
+            const { conversationName } = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'conversationName',
+                    message: 'Enter a name for the savepoint:',
+                },
+            ]);
+            name = conversationName;
+        }
     }
     if (!name) {
         logWarning('No conversation name.');
@@ -1344,6 +1351,9 @@ async function saveConversationState(name = null, data = conversationData) {
     const refreshedStates = await listSaveStates();
     await client.conversationsCache.set('savedConversations', refreshedStates.map(state => state.name));
 
+    // Update current loaded save to track this save
+    currentLoadedSave = name;
+
     logSuccess(`Saved state as "${name}" → ${relativePath}`);
     return conversation();
 }
@@ -1372,6 +1382,9 @@ async function applySavedState(savedState) {
         conversationId,
     });
 
+    // Update current loaded save to track this save
+    currentLoadedSave = name;
+
     const location = relativePath || (filePath ? path.relative(process.cwd(), filePath) : name);
     logSuccess(`Resumed ${conversationId} from ${location}.`);
     showHistory();
@@ -1392,6 +1405,10 @@ async function loadConversationState(name = 'lastConversation') {
             ...data,
             conversationId,
         });
+
+        // Update current loaded save to track this save (legacy cache-based load)
+        currentLoadedSave = name;
+
         logSuccess(`Resumed ${conversationId} at ${name}.`);
         showHistory();
         return conversation();
@@ -1457,6 +1474,85 @@ async function loadByTree() {
         }
     }
     return loadConversationState(name);
+}
+
+async function systemPromptSelection(name = null) {
+    // Get list of .txt files in contexts directory (excluding files subdirectory)
+    const getContextFiles = () => {
+        try {
+            const files = fs.readdirSync(CONTEXTS_DIR)
+                .filter(file =>
+                    file.endsWith(CONTEXT_EXTENSION) &&
+                    !fs.statSync(path.join(CONTEXTS_DIR, file)).isDirectory()
+                )
+                .map(file => ({
+                    name: file.replace(CONTEXT_EXTENSION, ''),
+                    filename: file,
+                    fullPath: path.join(CONTEXTS_DIR, file)
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            return files;
+        } catch (error) {
+            console.error('Error reading contexts directory:', error.message);
+            return [];
+        }
+    };
+
+    const contextFiles = getContextFiles();
+
+    if (contextFiles.length === 0) {
+        logWarning('No context files found in ./contexts directory.');
+        return conversation();
+    }
+
+    if (name) {
+        // If name is provided, try to load that specific context
+        const targetFile = contextFiles.find(file => file.name === name);
+        if (!targetFile) {
+            logWarning(`Context file "${name}" not found.`);
+            return conversation();
+        }
+
+        // Load and apply the context
+        try {
+            const contextContent = fs.readFileSync(targetFile.fullPath, 'utf8');
+
+            // Update the system message in settings
+            settings.cliOptions.openRouterOptions.messageOptions.systemMessage = contextContent;
+            settings.cliOptions.claudeOptions.messageOptions.systemMessage = contextContent;
+
+            logSuccess(`Loaded system prompt: ${name}`);
+            console.log(`\nContext preview (first 200 chars):\n${contextContent.slice(0, 200)}${contextContent.length > 200 ? '...' : ''}\n`);
+
+        } catch (error) {
+            logWarning(`Error loading context file: ${error.message}`);
+        }
+
+        return conversation();
+    }
+
+    // Show selection menu
+    const { selectedContext } = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'selectedContext',
+            message: 'Select a system prompt:',
+            choices: contextFiles.map(file => ({
+                name: `${file.name}`,
+                value: file.name,
+            })),
+            pageSize: Math.min(contextFiles.length, 20),
+        },
+    ]);
+
+    if (!selectedContext) {
+        logWarning('No context selected.');
+        return conversation();
+    }
+
+    // Apply the selected context recursively
+    return systemPromptSelection(selectedContext);
 }
 
 async function loadSavedState(name = null) {
@@ -1578,6 +1674,7 @@ async function exportConversation(conversationId = null) {
 async function newConversation() {
     conversationData = settings.cliOptions?.conversationData || settings.conversationData || {};
     localConversation.messages = [];
+    currentLoadedSave = null; // Reset current loaded save for new conversation
     logSuccess('Started new conversation.');
     return conversation();
 }
