@@ -413,7 +413,13 @@ async function generateMessage() {
     };
 
     const spinnerPrefix = `${getAILabel()} is typing...`;
-    const spinner = ora(spinnerPrefix);
+    const spinner = ora({
+        text: spinnerPrefix,
+        spinner: {
+            interval: 80,
+            frames: ['⠧', '⠇', '⠏', '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏', '⠋']
+        }
+    });
     spinner.prefixText = '\n   ';
     spinner.start();
     try {
@@ -436,7 +442,13 @@ async function generateMessage() {
                         }
                         streamedMessages[idx] += diff;
                         if (idx === previewIdx) {
-                            const output = aiMessageBox(replaceWhitespace(streamedMessages[idx].trim()));
+                            // Limit preview output length to prevent terminal issues
+                            const previewContent = streamedMessages[idx].trim();
+                            const truncatedContent = previewContent.length > 500
+                                ? previewContent.slice(0, 497) + '...'
+                                : previewContent;
+
+                            const output = aiMessageBox(replaceWhitespace(truncatedContent));
                             spinner.text = `${spinnerPrefix}\n${output}`;
                         }
                     }
@@ -1716,13 +1728,21 @@ async function printOrCopyData(action, args = null) {
 // tryBoxen moved to src/cli/boxen.js
 
 function aiMessageBox(message, title = null) {
-    return tryBoxen(`${message}`, {
+    // Ensure message is properly handled for terminal display
+    const cleanMessage = String(message || '').trim();
+
+    // Check if this is complex content that needs special handling (including stored ANSI format)
+    const hasComplexFormatting = cleanMessage.includes('\u001b[') || cleanMessage.includes('[3') || cleanMessage.includes('█') || cleanMessage.includes('▓') || cleanMessage.includes('≋');
+
+    return tryBoxen(cleanMessage, {
         title: title || getAILabel(),
-        padding: 0.7,
+        padding: hasComplexFormatting ? 0.5 : 0.7,
         margin: {
             top: 1, bottom: 0, left: 1, right: 1,
         },
         dimBorder: true,
+        // Let tryBoxen calculate proper width for complex content
+        width: hasComplexFormatting ? undefined : (Math.min(80, process.stdout.columns - 4) || 76)
     });
 }
 

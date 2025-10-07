@@ -46,10 +46,16 @@ export function conversationMessageBox(conversationMessage, index = null, ctx) {
   const indexString = index !== null ? `[${index}] ` : '';
   const childrenString = children.length > 0 ? ` ── !fw [${children.map((_, idx) => `${idx}`).join(' ')}]` : '';
   const siblingsString = siblings.length > 1 ? ` ── !alt ${siblings.map((sibling, idx) => navButton(sibling, idx, conversationMessage.id)).join(' ')}` : '';
+
+  // Handle complex content like ASCII art - preserve original formatting
   const messageText = replaceWhitespace(conversationMessage.message);
+
+  // Check if this looks like complex ASCII art or has ANSI codes (stored format or escaped)
+  const hasComplexFormatting = messageText.includes('\u001b[') || messageText.includes('[3') || messageText.includes('█') || messageText.includes('▓') || messageText.includes('≋');
+
   return tryBoxen(messageText, {
     title: `${indexString}${conversationMessage.role}${siblingsString}${childrenString}`,
-    padding: 0.7,
+    padding: hasComplexFormatting ? 0.5 : 0.7,
     margin: {
       top: 1,
       bottom: 0,
@@ -58,7 +64,9 @@ export function conversationMessageBox(conversationMessage, index = null, ctx) {
     },
     dimBorder: true,
     borderColor: aiMessage ? 'white' : (userMessage ? 'blue' : 'green'),
-    float: aiMessage ? 'left' : (userMessage ? 'right' : 'center'),
+    float: hasComplexFormatting ? 'left' : (aiMessage ? 'left' : (userMessage ? 'right' : 'center')),
+    // Let tryBoxen calculate width for complex content
+    width: hasComplexFormatting ? undefined : undefined,
   });
 }
 
