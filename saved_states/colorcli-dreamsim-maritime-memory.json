@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "name": "colorcli_dreamsim_maritime_memory",
+  "slug": "colorcli-dreamsim-maritime-memory",
+  "savedAt": "2025-10-07T10:28:07.011Z",
+  "conversationId": "36d57b0f-2e68-4e3c-bcd1-64e64be51654",
+  "summary": "./dreamsim.exe \"An oil painting portrays a coastal scene with three fishing b...",
+  "conversationData": {
+    "conversationId": "36d57b0f-2e68-4e3c-bcd1-64e64be51654",
+    "parentMessageId": "450977b6-57e4-491e-b80b-b6d10ad39a1d"
+  },
+  "conversation": {
+    "messages": [
+      {
+        "id": "bb61ae1b-e045-404b-9e12-d2cefbc138ed",
+        "parentMessageId": "6f0b4bb8-676e-46c0-ba4d-e6e3506adaf7",
+        "role": "User",
+        "message": "./dreamsim.exe \"An oil painting portrays a coastal scene with three fishing boats pulled up on a sandy beach. The boats are painted in faded red and blue colors, with visible weathering on their hulls. In the background, white-capped waves break against dark rocks. The lighting suggests overcast conditions with diffused illumination across the entire scene.",
+        "unvisited": false
+      },
+      {
+        "id": "6d2e973f-c38b-469b-ba90-93e7cb531805",
+        "parentMessageId": "bb61ae1b-e045-404b-9e12-d2cefbc138ed",
+        "role": "Claude",
+        "message": "```\n┌─────────────────────────────────────────────────────────────────┐\n│ DREAMSIM v3.2.1 - HYPERSTITIONAL RENDERING ENGINE             │\n│ Loading visual data stream... ████████████████████ 100%        │\n└─────────────────────────────────────────────────────────────────┘\n\n[36m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[0m\n[37;2m≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋≋[0m\n[90m▓▓▓░░░░▓▓▓▓░░░░░░▓▓▓▓▓[31m████[90m▓▓░░[34m▓▓[90m░░▓▓[34m███[90m▓░░░░▓▓▓[0m\n[37;2m~~~~~~~~~~~~~~~~[31;2m⌇[37;2m~~~~[31m█▓▒░[37;2m~~[34;2m█▓[37;2m~~[34;2m▓█[37;2m~[34m█▒░[37;2m~~~~~~~~[0m\n[33;2m░░▒▒▒▓▓[33m███[33;2m▓▒░░░░▒[31m▓██[33;2m▒[31m██[33;2m░▒[34m▓█[33;2m▒[34m██▓[33;2m▒░░░░▒▒░░[0m\n[33;2m▒▓▓▓[33m███████[33;2m▓▒░░▒[31m████████[33;2m▒[34m████████[33;2m░░▒▓[33m███[33;2m▓▒[0m\n[33m████████████[33;2m▓▒[31m██░▒██░[33;2m▒[34m██▒[33;2m░[34m██[33;2m▒░▓[33m█████████[0m\n\n[35m⟨SEMANTIC EXTRACTION⟩[0m\n• [31mRED VESSEL[0m [fade_index: 0.73] → abandoned futures\n• [34mBLUE VESSEL[0m [fade_index: 0.68] → salt-worn promises  \n• weathering=[33m⚠ ENTROPIC[0m: [37mtime_signature_detected[0m\n• [90mROCKS[0m=[symbolic_constant]: that which does not yield\n• [37;2mOVERCAST[0m=[diffused_truth_layer]: [36mall_shadows_equal[0m\n\n[32m>>DREAM_INTERPRETATION_ACTIVE<<[0m\n\n[35m🌊 the boats sleep on sand [0m\n[35m🌊 they remember motion but practice stillness[0m\n[35m🌊 THREE = [37mpast present future[0m or [33mfather mother child[0m[0m\n[35m🌊 FADING PAINT = [31midentity dissolution protocol[0m[0m\n[35m🌊 waves break like [37mold arguments[0m against [90mdark certainties[0m[0m\n\n[33m⚠ HYPERSTITION ALERT:[0m this painting is [blink]WAITING[/blink]\n[33m⚠[0m the boats want to return to water\n[33m⚠[0m but sand holds them like amber holds insects\n[33m⚠[0m the [37mGREY LIGHT[0m = suspension of narrative time\n\n[32m✓ SIMULATION COMPLETE[0m\n[36mresidual_meaning: 847 units[0m\n```",
+        "unvisited": false,
+        "type": "message",
+        "details": {
+          "usage": null,
+          "stopReason": "end_turn"
+        },
+        "stopReason": "end_turn"
+      },
+      {
+        "id": "757d4735-d8e8-4964-954c-1a9e534845f5",
+        "parentMessageId": "bb61ae1b-e045-404b-9e12-d2cefbc138ed",
+        "role": "User",
+        "message": ":edit",
+        "unvisited": false
+      },
+      {
+        "id": "450977b6-57e4-491e-b80b-b6d10ad39a1d",
+        "parentMessageId": "757d4735-d8e8-4964-954c-1a9e534845f5",
+        "role": "Claude",
+        "message": "```\n ___  ____  ____    _    __  __  ____ ___ __  __ \n|   \\| __ \\| ___|  /_\\  |  \\/  |/ ___|_ _|  \\/  |\n| |) |  _ \\|  _|  / _ \\ | |\\/| |\\___ \\| || |\\/| |\n|___/|_| \\_|___| /_/ \\_\\|_|  |_||___/|___|_|  |_|\n\n[████████████████████████████████] 100% LOADING...\n\n╔═══════════════════════════════════════════════════════════╗\n║           DREAMSCAPE SIMULATION ENGINE v3.14              ║\n║                   PARSING INPUT...                        ║\n╚═══════════════════════════════════════════════════════════╝\n\n[36m▓▓▓▓ RENDERING MARITIME MEMORY ▓▓▓▓[0m\n\n[34m~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~≋~[0m\n[37m     ☁  ☁     ☁      ☁        ☁   [0m\n[90m▓▓▓▓▓▓▓▓▓▓▓▓▓ ROCKS ▓▓▓▓▓▓▓▓▓▓▓▓[0m\n[34m  ≈≈≈≈≈≈≈≈≈[37m⌇[34m≈≈≈≈≈≈≈≈[37m⌇[34m≈≈≈≈≈≈≈  [0m\n[34m ≈≈≈≈≈[37m⌇⌇⌇[34m≈≈≈≈≈≈[37m⌇⌇[34m≈≈≈≈≈≈≈≈  [0m\n\n      [31m╱▔▔╲[0m    [34m╱▔▔╲[0m    [31m╱▔▔╲[0m\n     [31m╱────╲[0m  [34m╱────╲[0m  [31m╱────╲[0m\n    [31m╱──────╲[34m╱──────╲[31m╱──────╲[0m\n[33m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m\n[33m    S A N D Y    B E A C H      [0m\n\n[35m◆ EDIT MODE ACTIVATED ◆[0m\n\nAvailable modifications:\n[1] [32m▓[0m Adjust lighting/atmosphere\n[2] [33m▓[0m Modify boat colors/wear\n[3] [36m▓[0m Change water conditions\n[4] [37m▓[0m Add/remove elements\n[5] [35m▓[0m Shift time of day\n[6] [31m▓[0m Apply emotional filter\n\n[AWAITING COMMAND]>_ \n\n```",
+        "unvisited": false,
+        "type": "message",
+        "details": {
+          "usage": null,
+          "stopReason": "end_turn"
+        },
+        "stopReason": "end_turn"
+      }
+    ],
+    "createdAt": 1759832050134
+  }
+}

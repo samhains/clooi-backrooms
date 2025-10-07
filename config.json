@@ -1,6 +1,6 @@
 {
-  "context": "cli",
-  "aiContext": "cli",
+  "context": "cliColor",
+  "aiContext": "cliColor",
   "model": "sonnet4",
   "maxTokens": 4096,
   "vars": {
