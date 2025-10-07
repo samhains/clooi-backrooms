@@ -896,6 +896,101 @@ function parseAiCommandArgs(args = []) {
     };
 }
 
+function sanitizeComposeHistory(messages, assistantAuthor) {
+    if (!Array.isArray(messages) || !assistantAuthor) {
+        return messages;
+    }
+
+    const summarizeAttachment = (attachment, index) => {
+        if (!attachment || typeof attachment !== 'object') {
+            return `${index + 1}. image attachment`;
+        }
+        const descriptorParts = [];
+        if (attachment.name) {
+            descriptorParts.push(attachment.name);
+        }
+        const locator = attachment.sourceUrl || attachment.url || attachment.sourcePath;
+        if (locator && !descriptorParts.includes(locator)) {
+            descriptorParts.push(locator);
+        }
+        if (!descriptorParts.length) {
+            descriptorParts.push('image attachment');
+        }
+        return `${index + 1}. ${descriptorParts.join(' – ')}`;
+    };
+
+    return messages.map(message => {
+        if (!message || message.author !== assistantAuthor) {
+            return message;
+        }
+
+        const details = message.details;
+        const attachments = Array.isArray(details?.attachments)
+            ? details.attachments.filter(attachment => attachment?.type === 'image')
+            : [];
+        const hasImageContentParts = Array.isArray(details?.contentParts)
+            ? details.contentParts.some(part => part?.type === 'input_image' || part?.type === 'image')
+            : false;
+
+        if (!attachments.length && !hasImageContentParts) {
+            return message;
+        }
+
+        const sanitizedMessage = { ...message };
+        const sanitizedDetails = details ? { ...details } : undefined;
+
+        if (sanitizedDetails) {
+            if (sanitizedDetails.attachments) {
+                delete sanitizedDetails.attachments;
+            }
+            if (Array.isArray(sanitizedDetails.contentParts)) {
+                sanitizedDetails.contentParts = sanitizedDetails.contentParts.filter(
+                    part => part?.type !== 'input_image' && part?.type !== 'image',
+                );
+                if (!sanitizedDetails.contentParts.length) {
+                    delete sanitizedDetails.contentParts;
+                }
+            }
+        }
+
+        const attachmentNote = attachments.length
+            ? attachments.map((attachment, index) => summarizeAttachment(attachment, index)).join('\n')
+            : null;
+
+        if (sanitizedDetails) {
+            const existingPrompt = typeof sanitizedDetails.prompt === 'string'
+                ? sanitizedDetails.prompt.trim()
+                : '';
+            const promptSegments = [
+                existingPrompt,
+                attachmentNote ? `Attachments referenced:\n${attachmentNote}` : null,
+            ].filter(Boolean);
+            if (promptSegments.length) {
+                sanitizedDetails.prompt = promptSegments.join('\n\n');
+            } else {
+                delete sanitizedDetails.prompt;
+            }
+        }
+
+        if (sanitizedDetails && Object.keys(sanitizedDetails).length) {
+            sanitizedMessage.details = sanitizedDetails;
+        } else {
+            delete sanitizedMessage.details;
+        }
+
+        if (attachmentNote) {
+            const baseText = typeof sanitizedMessage.text === 'string'
+                ? sanitizedMessage.text.trim()
+                : '';
+            if (!baseText) {
+                sanitizedMessage.text = `Attachments referenced:\n${attachmentNote}`;
+            }
+        }
+
+        return sanitizedMessage;
+    });
+}
+
 async function composeAiMessage(args = [], rawInput = '') {
     const { contextSlug: explicitContextSlug, instructions: parsedInstructions } = parseAiCommandArgs(args);
     const configuredContext = settings?.config?.aiContext || settings?.config?.context || null;
@@ -942,6 +1037,11 @@ async function composeAiMessage(args = [], rawInput = '') {
         };
     });
 
+    const sanitizedMessages = sanitizeComposeHistory(
+        swappedMessages,
+        client.names.bot.author,
+    );
+
     const systemMessage = contextPrompt
         ? client.buildMessage(contextPrompt, client.names.system.author)
         : null;
@@ -967,7 +1067,7 @@ async function composeAiMessage(args = [], rawInput = '') {
         const apiParams = {
             ...composeModelOptions,
             ...steeringOption,
-            ...client.buildApiParams(instructionMessage, swappedMessages, systemMessage),
+            ...client.buildApiParams(instructionMessage, sanitizedMessages, systemMessage),
         };
 
         ({ replies } = await client.callAPI(apiParams, {}));
