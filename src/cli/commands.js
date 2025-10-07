@@ -20,6 +20,7 @@ export function buildCommands(api) {
     rewindTo,
     printOrCopyData,
     useEditor,
+    useEditorPlain,
     editMessage,
     addMessages,
     sendImageMessage,
@@ -182,8 +183,16 @@ export function buildCommands(api) {
       value: '!ml',
       usage: '!ml',
       description:
-        'Open the editor (for multi-line messages). When changes are saved and the editor is closed, the message will be sent.',
+        'Open the editor (for multi-line messages). Detected absolute paths or URLs are attached as images when the message is sent.',
       command: async () => useEditor(),
+    },
+    {
+      name: '!ml2 - Open the editor without attachment parsing',
+      value: '!ml2',
+      usage: '!ml2',
+      description:
+        'Open the editor (legacy !ml behavior). The message is sent exactly as written, without scanning for image attachments.',
+      command: async () => useEditorPlain(),
     },
     {
       name: '!edit - Edit and fork the current message',

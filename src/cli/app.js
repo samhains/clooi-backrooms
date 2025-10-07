@@ -62,6 +62,14 @@ let localConversation = {};
 let steeringFeatures = {};
 let currentLoadedSave = null;
 
+class AttachmentError extends Error {
+    constructor(message, severity = 'warning') {
+        super(message);
+        this.name = 'AttachmentError';
+        this.severity = severity;
+    }
+}
+
 function getStreamingPreviewLimit() {
     const candidate =
         Number(clientOptions?.modelOptions?.max_tokens) ||
@@ -294,6 +302,7 @@ let availableCommands = buildCommands({
     rewindTo,
     printOrCopyData,
     useEditor,
+    useEditorPlain,
     editMessage,
     addMessages,
     sendImageMessage,
@@ -1136,6 +1145,170 @@ function extractImageCommandComponents(raw) {
     };
 }
 
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*]\(([^)]+)\)/g;
+const INLINE_QUOTED_REGEX = /(["'`])([\s\S]*?)\1/g;
+
+function normalizeImageReference(raw) {
+    if (!raw) {
+        return '';
+    }
+    let normalized = raw.trim();
+    if (!normalized) {
+        return '';
+    }
+    normalized = normalized.replace(/^[([{<]+/, '').replace(/[)\]}>]+$/, '');
+
+    const wrapChars = ['"', '\'', '`'];
+    for (const ch of wrapChars) {
+        if (normalized.startsWith(ch) && normalized.endsWith(ch)) {
+            normalized = normalized.slice(1, -1).trim();
+        }
+    }
+
+    normalized = normalized.replace(/^[([{<]+/, '').replace(/[)\]}>]+$/, '');
+    normalized = normalized.replace(/[,:;!?]+$/, '');
+    return normalized.trim();
+}
+
+function isLikelyImageReference(candidate) {
+    if (!candidate) {
+        return false;
+    }
+    if (/^https?:\/\//i.test(candidate)) {
+        return true;
+    }
+    const expanded = expandHomePath(candidate);
+    return path.isAbsolute(expanded);
+}
+
+function extractInlineImageReferences(message) {
+    if (!message) {
+        return [];
+    }
+    const references = new Map();
+
+    const remember = candidate => {
+        const normalized = normalizeImageReference(candidate);
+        if (!normalized || !isLikelyImageReference(normalized)) {
+            return;
+        }
+        if (!references.has(normalized)) {
+            references.set(normalized, normalized);
+        }
+    };
+
+    let match;
+    while ((match = MARKDOWN_IMAGE_REGEX.exec(message)) !== null) {
+        remember(match[1]);
+    }
+
+    while ((match = INLINE_QUOTED_REGEX.exec(message)) !== null) {
+        remember(match[2]);
+    }
+
+    for (const token of message.split(/\s+/)) {
+        remember(token);
+    }
+
+    return Array.from(references.values());
+}
+
+async function createImageAttachment(imageReference, { requireAbsoluteForLocal = false } = {}) {
+    const trimmed = (imageReference || '').trim();
+    if (!trimmed) {
+        throw new AttachmentError('No image reference provided.', 'warning');
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(trimmed);
+        } catch (error) {
+            throw new AttachmentError(`Invalid image URL: ${error.message}`, 'error');
+        }
+        const rawBaseName = path.basename(parsedUrl.pathname) || parsedUrl.hostname || 'image';
+        let baseName = rawBaseName;
+        try {
+            baseName = decodeURIComponent(rawBaseName);
+        } catch {
+            baseName = rawBaseName;
+        }
+        const safeName = baseName || 'image';
+        return {
+            type: 'image',
+            name: safeName,
+            url: parsedUrl.toString(),
+            sourceUrl: parsedUrl.toString(),
+        };
+    }
+
+    const expanded = expandHomePath(trimmed);
+    if (requireAbsoluteForLocal && !path.isAbsolute(expanded)) {
+        throw new AttachmentError(`Image path must be absolute when using !ml: ${trimmed}`, 'warning');
+    }
+    const resolvedPath = resolvePotentialImagePath(trimmed);
+    if (!isExistingFile(resolvedPath)) {
+        throw new AttachmentError(`Image not found: ${trimmed}`, 'warning');
+    }
+
+    const mimeType = detectMimeType(resolvedPath);
+    if (!mimeType.startsWith('image/')) {
+        throw new AttachmentError(`The provided file is not a supported image type: ${trimmed}`, 'warning');
+    }
+
+    let fileBuffer;
+    try {
+        fileBuffer = await readFile(resolvedPath);
+    } catch (error) {
+        throw new AttachmentError(`Failed to read image file: ${error.message}`, 'error');
+    }
+
+    return {
+        type: 'image',
+        name: path.basename(resolvedPath),
+        mimeType,
+        dataUrl: `data:${mimeType};base64,${fileBuffer.toString('base64')}`,
+        sourcePath: resolvedPath,
+    };
+}
+
+async function collectInlineImageAttachments(message) {
+    const sources = extractInlineImageReferences(message);
+    if (sources.length === 0) {
+        return [];
+    }
+
+    const attachments = [];
+    const seen = new Set();
+
+    for (const source of sources) {
+        const isRemote = /^https?:\/\//i.test(source);
+        const dedupeKey = isRemote ? source.trim().toLowerCase() : expandHomePath(source.trim());
+        if (seen.has(dedupeKey)) {
+            continue;
+        }
+        seen.add(dedupeKey);
+        try {
+            const attachment = await createImageAttachment(source, {
+                requireAbsoluteForLocal: !isRemote,
+            });
+            attachments.push(attachment);
+        } catch (error) {
+            if (error instanceof AttachmentError) {
+                if (error.severity === 'error') {
+                    logError(error.message);
+                } else {
+                    logWarning(error.message);
+                }
+            } else {
+                logError(error?.message || error);
+            }
+        }
+    }
+
+    return attachments;
+}
+
 async function sendImageMessage(rawInput) {
     const payload = rawInput?.slice('!image'.length).trim();
     if (!payload) {
@@ -1151,59 +1324,19 @@ async function sendImageMessage(rawInput) {
 
     const userProvidedPrompt = promptText.length > 0;
     const promptForModel = userProvidedPrompt ? promptText : ' ';
-    const isRemoteImage = /^https?:\/\//i.test(imagePath);
-
     let attachment;
-    if (isRemoteImage) {
-        let parsedUrl;
-        try {
-            parsedUrl = new URL(imagePath);
-        } catch (error) {
-            logError(`Invalid image URL: ${error.message}`);
+    try {
+        attachment = await createImageAttachment(imagePath);
+    } catch (error) {
+        if (error instanceof AttachmentError) {
+            if (error.severity === 'error') {
+                logError(error.message);
+            } else {
+                logWarning(error.message);
+            }
             return conversation();
         }
-        const rawBaseName = path.basename(parsedUrl.pathname) || parsedUrl.hostname || 'image';
-        let baseName = rawBaseName;
-        try {
-            baseName = decodeURIComponent(rawBaseName);
-        } catch {
-            baseName = rawBaseName;
-        }
-        attachment = {
-            type: 'image',
-            name: baseName,
-            url: parsedUrl.toString(),
-            sourceUrl: parsedUrl.toString(),
-        };
-    } else {
-        const resolvedPath = resolvePotentialImagePath(imagePath);
-        if (!isExistingFile(resolvedPath)) {
-            logWarning(`Image not found: ${imagePath}`);
-            return conversation();
-        }
-
-        const mimeType = detectMimeType(resolvedPath);
-        if (!mimeType.startsWith('image/')) {
-            logWarning('The provided file is not a supported image type.');
-            return conversation();
-        }
-
-        let fileBuffer;
-        try {
-            fileBuffer = await readFile(resolvedPath);
-        } catch (error) {
-            logError(`Failed to read image file: ${error.message}`);
-            return conversation();
-        }
-
-        const dataUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
-        attachment = {
-            type: 'image',
-            name: path.basename(resolvedPath),
-            mimeType,
-            dataUrl,
-            sourcePath: resolvedPath,
-        };
+        throw error;
     }
 
     const displayText = promptForModel;
@@ -1281,25 +1414,55 @@ async function importBackroomsLogFlow(targetPath = null) {
     }
 }
 
-async function useEditor() {
-    let { message } = await inquirer.prompt([
+async function promptEditorForMessage(messagePrompt = 'Write a message:', defaultValue = '') {
+    const { message } = await inquirer.prompt([
         {
             type: 'editor',
             name: 'message',
-            message: 'Write a message:',
+            message: messagePrompt,
+            default: defaultValue,
             waitUserInput: false,
         },
     ]);
-    message = message.trim();
+    if (typeof message !== 'string') {
+        return '';
+    }
+    return message.trim();
+}
+
+async function useEditorPlain() {
+    const message = await promptEditorForMessage();
     if (!message) {
         return conversation();
     }
-    // console.log(message);
     await concatMessages(message);
     showHistory();
     return generateMessage();
+}
 
-    // return generateMessage(message);
+async function useEditor() {
+    const message = await promptEditorForMessage();
+    if (!message) {
+        return conversation();
+    }
+
+    const attachments = await collectInlineImageAttachments(message);
+    if (attachments.length > 0) {
+        await concatMessages([
+            {
+                author: client.names.user.author,
+                text: message,
+                details: {
+                    attachments,
+                },
+            },
+        ]);
+        logSuccess(`Attached ${attachments.length} image attachment${attachments.length > 1 ? 's' : ''} from message.`);
+    } else {
+        await concatMessages(message);
+    }
+    showHistory();
+    return generateMessage();
 }
 
 async function editMessage(messageId, args = null) {
