@@ -47,7 +47,6 @@ const pathToSettings = arg?.split('=')[1] ?? './settings.js';
 
 const CONTEXTS_DIR = path.resolve('./contexts');
 const CONTEXT_EXTENSION = '.txt';
-const STREAM_PREVIEW_LIMIT = 1200;
 
 let settings;
 let watcher;
@@ -63,7 +62,14 @@ let localConversation = {};
 let steeringFeatures = {};
 let currentLoadedSave = null;
 
-function createStreamingPreview(prefixLabel) {
+function getStreamingPreviewLimit() {
+    const candidate =
+        Number(clientOptions?.modelOptions?.max_tokens) ||
+        Number(settings?.maxTokens);
+    return Number.isFinite(candidate) && candidate > 0 ? candidate : Infinity;
+}
+
+function createStreamingPreview(prefixLabel, limit = Infinity) {
     let lineCount = 0;
     let active = false;
 
@@ -74,10 +80,10 @@ function createStreamingPreview(prefixLabel) {
             return '';
         }
         const normalized = typeof input === 'string' ? input : String(input ?? '');
-        if (normalized.length <= STREAM_PREVIEW_LIMIT) {
+        if (!Number.isFinite(limit) || normalized.length <= limit) {
             return normalized;
         }
-        const sliceLength = Math.max(1, STREAM_PREVIEW_LIMIT - 1);
+        const sliceLength = Math.max(1, limit - 1);
         return `…${normalized.slice(-sliceLength)}`;
     };
 
@@ -465,7 +471,7 @@ async function generateMessage() {
     };
 
     const spinnerPrefix = `${getAILabel()} is typing...`;
-    const previewRenderer = createStreamingPreview(spinnerPrefix);
+    const previewRenderer = createStreamingPreview(spinnerPrefix, getStreamingPreviewLimit());
     const spinner = ora({
         text: spinnerPrefix,
         spinner: {
