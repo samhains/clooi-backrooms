@@ -1326,6 +1326,9 @@ async function createImageAttachment(imageReference, { requireAbsoluteForLocal =
         } catch (error) {
             throw new AttachmentError(`Invalid image URL: ${error.message}`, 'error');
         }
+        if (parsedUrl.protocol !== 'https:') {
+            throw new AttachmentError('Image URLs must use HTTPS. Please provide a secure https:// link or a local file path.', 'warning');
+        }
         const rawBaseName = path.basename(parsedUrl.pathname) || parsedUrl.hostname || 'image';
         let baseName = rawBaseName;
         try {
