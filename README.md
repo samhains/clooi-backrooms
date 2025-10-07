@@ -74,7 +74,8 @@ The `!help` command will show a list of commands and their descriptions. You can
 - !pr [type]: Print data to console.
     - [type]: If provided, print the data of that type. If not provided, a prompt will appear to choose which data to print.
 
-- !ml: Open the editor (for multi-line messages). When changes are saved and the editor is closed, the message will be sent.
+- !ml: Open the editor (for multi-line messages). HTTPS URLs or absolute paths in the edited text are automatically attached as images when you save.
+- !ml2: Open the editor without parsing for attachments (legacy !ml behavior).
 
 - !edit: Opens the text of the current message in the editor. If you make changes and save, a copy of the message (with the same author and type) will be created as a sibling message.
 

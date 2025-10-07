@@ -1,5 +1,20 @@
 # Change log
 
+## 2025-10-07
+
+### Impacts UX
+* `!ml` now scans the edited message for HTTPS URLs or absolute file paths and attaches matching images automatically; `!ml2` preserves the legacy behavior for text-only edits.
+* `!ai` composer no longer fails when upstream assistant turns include image attachments; the history is sanitized before hitting the Anthropic Messages API.
+* `!image` immediately warns when given a non-HTTPS URL instead of triggering a streaming failure.
+
+### Other
+* Filter outbound attachments to skip unsupported image sources when constructing API payloads, preventing Anthropic 400 errors.
+* Hoisted multiline editor regex constants to avoid runtime TDZ crashes.
+
+### Other
+* Refactored ChatClient interface
+* Refactored BingAIClient interface to be consistent with ChatClient
+
 ## 2024-7-9
 * track and indicate visited status of messages
 
@@ -19,11 +34,6 @@
 * User suggestions display if available for current message, not just the most recently generated message
 * User suggestions added to autocomplete menu
 * Lastconversation autosave state updates whenever navigation occurs
-
-
-### Other
-* Refactored ChatClient interface
-* Refactored BingAIClient interface to be consistent with ChatClient
 
 ## 2024-5-31
 
