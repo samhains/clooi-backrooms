@@ -536,15 +536,33 @@ export default class ChatClient {
 
         if (Array.isArray(details.attachments)) {
             for (const attachment of details.attachments) {
-                if (attachment?.type === 'image') {
-                    const imageSource = attachment.dataUrl || attachment.url;
-                    if (imageSource) {
-                        parts.push({
-                            type: 'input_image',
-                            image_url: { url: imageSource },
-                        });
-                    }
+                if (attachment?.type !== 'image') {
+                    continue;
                 }
+
+                const candidateSources = [
+                    attachment.dataUrl,
+                    attachment.url,
+                    attachment.sourceUrl,
+                ].filter(Boolean);
+
+                const imageSource = candidateSources.find(source =>
+                    typeof source === 'string'
+                    && (source.startsWith('data:') || /^https:\/\//i.test(source)),
+                );
+
+                if (!imageSource) {
+                    const firstSource = candidateSources[0];
+                    if (firstSource) {
+                        console.warn(`Skipping unsupported image attachment source: ${firstSource}`);
+                    }
+                    continue;
+                }
+
+                parts.push({
+                    type: 'input_image',
+                    image_url: { url: imageSource },
+                });
             }
         }
 
