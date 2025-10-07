@@ -8,14 +8,13 @@ import { writeFile, readFile } from 'fs/promises';
 import { existsSync, realpathSync } from 'fs';
 import { unlink } from 'fs/promises';
 
-
 import chokidar from 'chokidar';
-
 import ora from 'ora';
 import clipboard from 'clipboardy';
 import inquirer from 'inquirer';
 import inquirerAutocompletePrompt from 'inquirer-autocomplete-prompt';
 import crypto from 'crypto';
+import readline from 'readline';
 import { getClient, getClientSettings } from './util.js';
 import { applyTemplateVariables } from '../utils/templateVars.js';
 import { getCid, savedStatesByConversation, getSavedIds } from '../utils/cache.js';
@@ -48,6 +47,7 @@ const pathToSettings = arg?.split('=')[1] ?? './settings.js';
 
 const CONTEXTS_DIR = path.resolve('./contexts');
 const CONTEXT_EXTENSION = '.txt';
+const STREAM_PREVIEW_LIMIT = 1200;
 
 let settings;
 let watcher;
@@ -62,6 +62,55 @@ let navigationHistory = [];
 let localConversation = {};
 let steeringFeatures = {};
 let currentLoadedSave = null;
+
+function createStreamingPreview(prefixLabel) {
+    let lineCount = 0;
+    let active = false;
+
+    const isTTY = () => Boolean(process.stdout && process.stdout.isTTY);
+
+    const truncateContent = (input) => {
+        if (!input) {
+            return '';
+        }
+        const trimmed = input.trim();
+        if (trimmed.length <= STREAM_PREVIEW_LIMIT) {
+            return trimmed;
+        }
+        return `${trimmed.slice(0, STREAM_PREVIEW_LIMIT - 1)}…`;
+    };
+
+    const render = (content) => {
+        const truncated = truncateContent(content);
+        const boxedOutput = aiMessageBox(replaceWhitespace(truncated));
+        const fullOutput = `${prefixLabel}\n${boxedOutput}`;
+
+        if (isTTY() && lineCount > 0) {
+            readline.moveCursor(process.stdout, 0, -lineCount);
+            readline.clearScreenDown(process.stdout);
+        } else if (!isTTY() && active) {
+            // In non-TTY scenarios we cannot rewrite in place, so add spacing between updates.
+            process.stdout.write('\n');
+        }
+
+        process.stdout.write(`${fullOutput}\n`);
+        lineCount = fullOutput.split('\n').length + 1;
+        active = true;
+    };
+
+    return {
+        isActive: () => active,
+        render,
+        clear() {
+            if (isTTY() && lineCount > 0) {
+                readline.moveCursor(process.stdout, 0, -lineCount);
+                readline.clearScreenDown(process.stdout);
+            }
+            lineCount = 0;
+            active = false;
+        },
+    };
+}
 
 
 async function initializeSettingsWatcher(path) {
@@ -415,6 +464,7 @@ async function generateMessage() {
     };
 
     const spinnerPrefix = `${getAILabel()} is typing...`;
+    const previewRenderer = createStreamingPreview(spinnerPrefix);
     const spinner = ora({
         text: spinnerPrefix,
         spinner: {
@@ -424,6 +474,13 @@ async function generateMessage() {
     });
     spinner.prefixText = '\n   ';
     spinner.start();
+    let spinnerActive = true;
+    const stopSpinner = () => {
+        if (spinnerActive) {
+            spinner.stop();
+            spinnerActive = false;
+        }
+    };
     try {
         const controller = new AbortController();
         // abort on ctrl+c
@@ -444,14 +501,10 @@ async function generateMessage() {
                         }
                         streamedMessages[idx] += diff;
                         if (idx === previewIdx) {
-                            // Limit preview output length to prevent terminal issues
-                            const previewContent = streamedMessages[idx].trim();
-                            const truncatedContent = previewContent.length > 500
-                                ? previewContent.slice(0, 497) + '...'
-                                : previewContent;
-
-                            const output = aiMessageBox(replaceWhitespace(truncatedContent));
-                            spinner.text = `${spinnerPrefix}\n${output}`;
+                            if (!previewRenderer.isActive()) {
+                                stopSpinner();
+                            }
+                            previewRenderer.render(streamedMessages[idx]);
                         }
                     }
                     if (data) {
@@ -488,7 +541,11 @@ async function generateMessage() {
 
                         // remove event listeners
 
-                        spinner.stop();
+                        if (previewRenderer.isActive()) {
+                            previewRenderer.clear();
+                        } else {
+                            stopSpinner();
+                        }
                         if (empty) {
                             return conversation();
                         }
@@ -508,7 +565,11 @@ async function generateMessage() {
             // console.log('not streaming');
             // remove event listeners
 
-            spinner.stop();
+            if (previewRenderer.isActive()) {
+                previewRenderer.clear();
+            } else {
+                stopSpinner();
+            }
             const newConversationMessages = [];
             let previewMessage;
             for (const [key, text] of Object.entries(replies)) {
@@ -539,7 +600,11 @@ async function generateMessage() {
         // remove event listeners
         process.removeAllListeners('SIGINT');
     
-        spinner.stop();
+        if (previewRenderer.isActive()) {
+            previewRenderer.clear();
+        } else {
+            stopSpinner();
+        }
         console.log(error);
         if (streamedMessages && Object.keys(streamedMessages).length > 0) {
             // console.log(streamedMessages);
