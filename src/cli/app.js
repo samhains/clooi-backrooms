@@ -73,11 +73,12 @@ function createStreamingPreview(prefixLabel) {
         if (!input) {
             return '';
         }
-        const trimmed = input.trim();
-        if (trimmed.length <= STREAM_PREVIEW_LIMIT) {
-            return trimmed;
+        const normalized = typeof input === 'string' ? input : String(input ?? '');
+        if (normalized.length <= STREAM_PREVIEW_LIMIT) {
+            return normalized;
         }
-        return `${trimmed.slice(0, STREAM_PREVIEW_LIMIT - 1)}…`;
+        const sliceLength = Math.max(1, STREAM_PREVIEW_LIMIT - 1);
+        return `…${normalized.slice(-sliceLength)}`;
     };
 
     const render = (content) => {
