@@ -12,6 +12,7 @@ export function buildCommands(api) {
     composeAiMessage,
     saveConversationState,
     loadSavedState,
+    systemPromptSelection,
     newConversation,
     rewind,
     selectChildMessage,
@@ -93,6 +94,14 @@ export function buildCommands(api) {
       description:
         'Load a saved conversation state.\n\t[name]: If a name is provided, it will load the state with that name, otherwise a prompt will appear showing saved states.',
       command: async args => loadSavedState(args[1]),
+    },
+    {
+      name: '!system - Select system prompt',
+      value: '!system',
+      usage: '!system [name]',
+      description:
+        'Select and load a system prompt from ./contexts directory.\n\t[name]: If a name is provided (without .txt extension), it will load that system prompt directly, otherwise a menu will appear showing available prompts.',
+      command: async args => systemPromptSelection(args[1]),
     },
     {
       name: '!new - Start new conversation',

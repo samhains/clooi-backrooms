@@ -16,12 +16,46 @@ function getMaxLineWidth(str) {
   return Math.max(...lines.map(line => getVisualWidth(line)));
 }
 
+const DOUBLE_ESC_SEQUENCE = /\u001b{2,}\[/g;
+const STORED_ANSI_SEQUENCE = /(?<!\u001b)\[(?:\??\d+(?:;\d+)*)[A-Za-z~]/g;
+const ANSI_COLOR_SEQUENCE = /\u001b\[[0-9;]*m/;
+const ANSI_RESET_SEQUENCE = /\u001b\[(?:0|22|39|49)m/;
+
 /**
- * Convert stored ANSI codes to proper escape sequences
+ * Convert stored ANSI codes to proper escape sequences without corrupting
+ * already-correct escape codes (duplication of ESC can freeze streaming output).
  */
 function restoreAnsiCodes(str) {
-  // Convert [38;5;XXXm, [0m, etc. to proper ESC sequences
-  return str.replace(/\[(\d+(?:;\d+)*m)/g, '\u001b[$1');
+  if (!str) {
+    return '';
+  }
+
+  // Collapse accidental double-ESC sequences that would otherwise render literally.
+  let normalized = str.replace(DOUBLE_ESC_SEQUENCE, '\u001b[');
+
+  // Convert stored CSI fragments (missing ESC) into proper escape sequences.
+  normalized = normalized.replace(STORED_ANSI_SEQUENCE, (match, offset, source) => {
+    if (offset > 0 && source.charCodeAt(offset - 1) === 0x1b) {
+      return match;
+    }
+    return `\u001b${match}`;
+  });
+
+  return normalized;
+}
+
+/**
+ * Ensure ANSI color sequences are balanced with a trailing reset so that
+ * partially streamed output does not leak styles into the spinner/terminal.
+ */
+function ensureTrailingReset(str) {
+  if (!ANSI_COLOR_SEQUENCE.test(str)) {
+    return str;
+  }
+  if (ANSI_RESET_SEQUENCE.test(str)) {
+    return str;
+  }
+  return `${str}\u001b[0m`;
 }
 
 /**
@@ -36,7 +70,8 @@ export function tryBoxen(input, options) {
     const rawInput = typeof input === 'string' ? input : String(input);
 
     // Restore ANSI escape codes that may have been stored without ESC character
-    const cleanInput = restoreAnsiCodes(rawInput);
+    const cleanInputWithAnsi = restoreAnsiCodes(rawInput);
+    const cleanInput = ensureTrailingReset(cleanInputWithAnsi);
 
     // Calculate proper width for content with ANSI codes
     const maxContentWidth = getMaxLineWidth(cleanInput);
