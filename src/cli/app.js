@@ -47,6 +47,8 @@ const pathToSettings = arg?.split('=')[1] ?? './settings.js';
 
 const CONTEXTS_DIR = path.resolve('./contexts');
 const CONTEXT_EXTENSION = '.txt';
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*]\(([^)]+)\)/g;
+const INLINE_QUOTED_REGEX = /(["'`])([\s\S]*?)\1/g;
 
 let settings;
 let watcher;
@@ -1244,9 +1246,6 @@ function extractImageCommandComponents(raw) {
         promptText: promptTokens.join(' ').trim(),
     };
 }
-
-const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*]\(([^)]+)\)/g;
-const INLINE_QUOTED_REGEX = /(["'`])([\s\S]*?)\1/g;
 
 function normalizeImageReference(raw) {
     if (!raw) {
