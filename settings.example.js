@@ -70,6 +70,7 @@ export default {
             modelOptions: {
                 model: 'claude-3-opus-20240229',
                 max_tokens: 4096,
+                max_output_tokens: 4096,
                 temperature: 1,
                 stream: true,
             },

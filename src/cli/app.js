@@ -72,6 +72,7 @@ class AttachmentError extends Error {
 
 function getStreamingPreviewLimit() {
     const candidate = Number(clientOptions?.modelOptions?.max_tokens)
+        || Number(clientOptions?.modelOptions?.max_output_tokens)
         || Number(settings?.maxTokens);
     return Number.isFinite(candidate) && candidate > 0 ? candidate : Infinity;
 }

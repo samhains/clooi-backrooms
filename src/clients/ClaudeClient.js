@@ -23,6 +23,7 @@ const CLAUDE_PARTICIPANTS = {
 const CLAUDE_DEFAULT_MODEL_OPTIONS = {
     temperature: 1,
     max_tokens: 4096,
+    max_output_tokens: 4096,
     stream: true,
 };
 
@@ -74,9 +75,15 @@ export default class ClaudeClient extends ChatClient {
         if (globals?.context_length && Number.isFinite(globals.context_length)) {
             this.modelInfo.default.contextLength = globals.context_length;
         }
-        if (globals?.max_tokens && Number.isFinite(globals.max_tokens) && (this.modelOptions.max_tokens == null)) {
+        if (
+            globals?.max_tokens
+            && Number.isFinite(globals.max_tokens)
+            && this.modelOptions.max_tokens == null
+            && this.modelOptions.max_output_tokens == null
+        ) {
             this.modelOptions.max_tokens = globals.max_tokens;
         }
+        this.synchronizeTokenLimits();
 
         // Re-apply options so that ChatClient recomputes token limits with our overrides.
         this.setOptions({
@@ -202,13 +209,17 @@ export default class ClaudeClient extends ChatClient {
             modelAlias,
             stream: streamPref,
             n,
+            max_tokens,
+            max_output_tokens,
             ...restOptions
         } = modelOptions;
 
         const shouldStream = streamPref !== false;
+        const resolvedMaxTokens = max_output_tokens ?? max_tokens ?? null;
         const body = {
             ...restOptions,
             stream: shouldStream,
+            ...(resolvedMaxTokens != null ? { max_output_tokens: resolvedMaxTokens } : {}),
         };
 
         // Anthropic does not support parallel samples via `n` yet.

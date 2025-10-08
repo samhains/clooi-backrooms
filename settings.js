@@ -120,6 +120,7 @@ export default {
             modelOptions: {
                 temperature: 1,
                 max_tokens: maxTokens,
+                max_output_tokens: maxTokens,
                 stream: true,
             },
             messageOptions: {

@@ -22,7 +22,7 @@ export default class ChatClient {
         } else {
             const cacheOptions = options.cache || {};
             cacheOptions.namespace = cacheOptions.namespace || 'default';
-            this.conversationsCache = new Keyv(cacheOptions);
+        this.conversationsCache = new Keyv(cacheOptions);
         }
         this.isChatGptModel = false;
         this.endToken = '';
@@ -32,6 +32,31 @@ export default class ChatClient {
         this.n = null;
         this.setOptions(options);
         // this.options.debug = true;
+    }
+
+    synchronizeTokenLimits() {
+        const hasMaxTokens = Object.prototype.hasOwnProperty.call(this.modelOptions || {}, 'max_tokens');
+        const hasMaxOutputTokens = Object.prototype.hasOwnProperty.call(this.modelOptions || {}, 'max_output_tokens');
+
+        const maxTokensValue = hasMaxTokens ? Number(this.modelOptions.max_tokens) : NaN;
+        const maxOutputTokensValue = hasMaxOutputTokens ? Number(this.modelOptions.max_output_tokens) : NaN;
+
+        const candidate = Number.isFinite(maxTokensValue)
+            ? maxTokensValue
+            : (Number.isFinite(maxOutputTokensValue) ? maxOutputTokensValue : null);
+
+        if (candidate == null) {
+            return;
+        }
+        if (candidate <= 0) {
+            return;
+        }
+        if (hasMaxTokens) {
+            this.modelOptions.max_tokens = candidate;
+        }
+        if (hasMaxOutputTokens) {
+            this.modelOptions.max_output_tokens = candidate;
+        }
     }
 
     setOptions(options) {
@@ -61,6 +86,7 @@ export default class ChatClient {
             ...this.modelOptions,
             ...modelOptions,
         };
+        this.synchronizeTokenLimits();
         const participants = this.options.participants || {};
         this.participants = {
             ...DEFAULT_PARTICIPANTS,
