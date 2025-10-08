@@ -8,8 +8,7 @@ export function getCid(data) {
     return convId;
 }
 
-
-export async function getSavedStatesForConversation(conversationsCache, conversationId) {
+export async function getSavedStatesForConversation(conversationId) {
     const states = await listSaveStates();
     return states
         .filter(state => getCid(state.conversationData || {}) === conversationId)
@@ -18,27 +17,30 @@ export async function getSavedStatesForConversation(conversationsCache, conversa
 
 export async function savedStatesByConversation(conversationsCache) {
     const states = await listSaveStates();
-    const savedStatesByConversation = {};
+    const statesByConversation = {};
     for (const state of states) {
-        const conversationData = state.conversationData || {};
+        const { conversationData = {} } = state;
         const conversationId = getCid(conversationData);
         if (!conversationId) {
             continue;
         }
-        if (!savedStatesByConversation[conversationId]) {
-            const conversation = state.conversation
-                || (await conversationsCache.get?.(conversationId))
-                || {};
+        if (!statesByConversation[conversationId]) {
+            let { conversation } = state;
+            if (!conversation && typeof conversationsCache?.get === 'function') {
+                // eslint-disable-next-line no-await-in-loop
+                conversation = await conversationsCache.get(conversationId);
+            }
+            conversation = conversation || {};
             const firstMessage = conversation.messages?.[0]?.message;
             const conversationName = conversation.name
                 || (typeof firstMessage === 'string' ? firstMessage.substring(0, 50) : conversationId);
 
-            savedStatesByConversation[conversationId] = {
+            statesByConversation[conversationId] = {
                 name: conversationName,
                 states: [],
             };
         }
-        savedStatesByConversation[conversationId].states.push({
+        statesByConversation[conversationId].states.push({
             name: state.name,
             slug: state.slug,
             savedAt: state.savedAt,
@@ -46,10 +48,10 @@ export async function savedStatesByConversation(conversationsCache) {
             filePath: state.filePath,
         });
     }
-    return savedStatesByConversation;
+    return statesByConversation;
 }
 
-export async function getSavedIds(conversationsCache) {
+export async function getSavedIds() {
     const states = await listSaveStates();
     return states
         .map(state => getCid(state.conversationData || {}))

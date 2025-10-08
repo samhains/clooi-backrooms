@@ -9,16 +9,16 @@ const tokenizersCache = {};
  * @param {boolean} [isModelName]
  * @param {object} [extendSpecialTokens]
  */
-export function getTokenizer(encoding, isModelName = false, extendSpecialTokens = {}) {
-  if (tokenizersCache[encoding]) {
-    return tokenizersCache[encoding];
-  }
-  let tokenizer;
-  if (isModelName) {
-    tokenizer = encodingForModel(encoding, extendSpecialTokens);
-  } else {
-    tokenizer = getEncoding(encoding, extendSpecialTokens);
-  }
-  tokenizersCache[encoding] = tokenizer;
-  return tokenizer;
+export default function getTokenizer(encoding, isModelName = false, extendSpecialTokens = {}) {
+    if (tokenizersCache[encoding]) {
+        return tokenizersCache[encoding];
+    }
+    let tokenizer;
+    if (isModelName) {
+        tokenizer = encodingForModel(encoding, extendSpecialTokens);
+    } else {
+        tokenizer = getEncoding(encoding, extendSpecialTokens);
+    }
+    tokenizersCache[encoding] = tokenizer;
+    return tokenizer;
 }

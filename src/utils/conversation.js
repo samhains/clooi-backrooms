@@ -48,4 +48,3 @@ export function getParent(messages, messageId) {
     }
     return messages.find(m => m.id === message.parentMessageId);
 }
-

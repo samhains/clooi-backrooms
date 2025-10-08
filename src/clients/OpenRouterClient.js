@@ -2,7 +2,7 @@ import '../polyfills/fetch.js';
 import ChatClient from './ChatClient.js';
 import { loadModelPresets, resolveModelAlias, getDefaultModelAlias } from '../modelPresets.js';
 
-//TODO: add support for other models
+// TODO: add support for other models
 const MODEL_INFO = {
     default: {
         contextLength: 8192,

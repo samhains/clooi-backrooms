@@ -154,7 +154,7 @@ export default {
     },
     claudeClient: {
         apiKey: process.env.ANTHROPIC_API_KEY || '',
-        completionsUrl:  'https://api.anthropic.com/v1/messages',
+        completionsUrl: 'https://api.anthropic.com/v1/messages',
         debug: false,
     },
     ollamaClient: {

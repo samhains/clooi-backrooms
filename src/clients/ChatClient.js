@@ -5,7 +5,7 @@ import { fetchEventSource } from '@waylaidwanderer/fetch-event-source';
 import { Agent } from 'undici';
 import { getMessagesForConversation } from '../utils/conversation.js';
 import { DEFAULT_API_MESSAGE_SCHEMA, DEFAULT_MODEL_INFO, DEFAULT_PARTICIPANTS } from './constants.js';
-import { getTokenizer as getTokenizerImpl } from './tokenizer.js';
+import getTokenizer from './tokenizer.js';
 import * as conversions from '../utils/typeConversion.js';
 
 // constants and tokenizer cache moved to dedicated modules
@@ -67,9 +67,9 @@ export default class ChatClient {
             ...this.participants,
             ...participants,
         };
-        const modelInfo = this.modelInfo[this.modelOptions.model] ||
-        this.modelInfo[this.modelPointers[this.modelOptions.model]] ||
-        this.modelInfo.default;
+        const modelInfo = this.modelInfo[this.modelOptions.model]
+        || this.modelInfo[this.modelPointers[this.modelOptions.model]]
+        || this.modelInfo.default;
         this.maxContextTokens = modelInfo.contextLength;
         this.maxResponseTokens = this.modelOptions.max_tokens || modelInfo.maxResponseTokens || 400;
         this.maxPromptTokens = this.options.maxPromptTokens || (this.maxContextTokens - this.maxResponseTokens);
@@ -115,7 +115,7 @@ export default class ChatClient {
         };
     }
 
-    buildMessage(message = '', author = null, type = null, opts={}) {
+    buildMessage(message = '', author = null, type = null, opts = {}) {
         const text = message?.text || message;
         author = message?.author || author;
         type = message?.type || type;
@@ -229,20 +229,20 @@ export default class ChatClient {
         };
     }
 
-    async standardCompletion(messages={}, modelOptions = {}, opts = {}) {
+    async standardCompletion(messages = {}, modelOptions = {}, opts = {}) {
         const {
             userMessage,
             previousMessages,
             systemMessage,
         } = messages;
-        
+
         const apiParams = {
             ...modelOptions,
             ...this.buildApiParams(userMessage, previousMessages, systemMessage, { ...modelOptions, ...opts }),
         };
 
         const { result } = await this.callAPI(apiParams, opts);
-        return result
+        return result;
     }
 
     getHeaders() {
@@ -295,10 +295,6 @@ export default class ChatClient {
             ...this.modelOptions,
             ...params,
         };
-        const modelName = modelOptions.model;
-        const extendSpecialTokens = modelOptions.extendSpecialTokens || {};
-        const isChatGptModel = this.isChatGptModel;
-
         const debug = this.options.debug || false;
 
         const n = modelOptions.n || this.n || 1;
@@ -308,9 +304,7 @@ export default class ChatClient {
 
         const replies = {};
 
-        const onProgress = (opts.onProgress) ? (message) => this.onProgressWrapper(message, replies, opts) : null;
-
-        const onFinished = (opts.onFinished) ? opts.onFinished : null;
+        const onProgress = (opts.onProgress) ? message => this.onProgressWrapper(message, replies, opts) : null;
 
         const signals = (opts.abortController) ? [opts.abortController.signal] : [];
 
@@ -342,7 +336,7 @@ export default class ChatClient {
             if (signal.aborted) {
                 abortController.abort();
             }
-        }
+        };
         for (const signal of signals) {
             if (signal.aborted) {
                 abortController.abort();
@@ -413,7 +407,7 @@ export default class ChatClient {
             });
             // Build a minimal result object from aggregated replies, to avoid a second POST
             const resultFromStream = {
-                choices: Object.keys(replies).sort((a,b)=>Number(a)-Number(b)).map((k) => {
+                choices: Object.keys(replies).sort((a, b) => Number(a) - Number(b)).map((k) => {
                     const index = Number(k);
                     const text = replies[k] || '';
                     return this.isChatGptModel
@@ -518,6 +512,7 @@ export default class ChatClient {
         return apiMessage;
     }
 
+    // eslint-disable-next-line class-methods-use-this
     buildContentParts(message) {
         const details = message?.details;
         if (!details) {
@@ -546,10 +541,8 @@ export default class ChatClient {
                     attachment.sourceUrl,
                 ].filter(Boolean);
 
-                const imageSource = candidateSources.find(source =>
-                    typeof source === 'string'
-                    && (source.startsWith('data:') || /^https:\/\//i.test(source)),
-                );
+                const imageSource = candidateSources.find(source => typeof source === 'string'
+                    && (source.startsWith('data:') || /^https:\/\//i.test(source)));
 
                 if (!imageSource) {
                     const firstSource = candidateSources[0];
@@ -637,7 +630,7 @@ export default class ChatClient {
     }
 
     static getTokenizer(encoding, isModelName = false, extendSpecialTokens = {}) {
-        return getTokenizerImpl(encoding, isModelName, extendSpecialTokens);
+        return getTokenizer(encoding, isModelName, extendSpecialTokens);
     }
 
     getTokenCount(text) {

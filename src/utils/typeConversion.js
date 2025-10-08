@@ -7,10 +7,11 @@
 
 export function parseXml(xmlString) {
     const messages = [];
-    const regex = /<(\w+)(?:\s+(\w+)=\"([^\"]*)\")?>([\s\S]*?)<\/\1>/g;
-    let match;
+    const regex = /<(\w+)(?:\s+(\w+)="([^"]*)")?>([\s\S]*?)<\/\1>/g;
+    regex.lastIndex = 0;
+    let match = regex.exec(xmlString);
 
-    while ((match = regex.exec(xmlString)) !== null) {
+    while (match) {
         const author = match[1];
         const attributeName = match[2];
         const attributeValue = match[3];
@@ -23,6 +24,7 @@ export function parseXml(xmlString) {
         }
 
         messages.push(message);
+        match = regex.exec(xmlString);
     }
 
     return messages;
@@ -33,7 +35,7 @@ export function toXml(messages) {
     for (const message of messages) {
         // const name = this.convertAlias('author', 'transcript', message.author);
         if (message.type && message.type !== 'message') {
-            xml += `<${message.author} type=\"${message.type}\">\n`;
+            xml += `<${message.author} type="${message.type}">\n`;
             // xml += `<${name}>\n<${message.type}>\n${message.text}\n</${message.type}>\n</${name}>\n`;
         } else {
             xml += `<${message.author}>\n`;
@@ -59,13 +61,15 @@ export function parseTranscript(historyString) {
     const headerRegex = /\[.+?\]\(#.+?\)/g;
     const authorRegex = /\[(.+?)]/;
     const messageTypeRegex = /\(#(.+?)\)/;
-    let match;
     const messages = [];
     const headerStartIndices = [];
     const headers = [];
-    while ((match = headerRegex.exec(historyString))) {
+    headerRegex.lastIndex = 0;
+    let match = headerRegex.exec(historyString);
+    while (match) {
         headerStartIndices.push(match.index);
         headers.push(match[0]);
+        match = headerRegex.exec(historyString);
     }
     for (let i = 0; i < headerStartIndices.length; i++) {
         const start = headerStartIndices[i];
@@ -118,4 +122,3 @@ export function getDataType(data) {
     }
     return 'unknown';
 }
-

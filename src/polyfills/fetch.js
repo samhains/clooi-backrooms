@@ -8,4 +8,3 @@ if (!globalThis.fetch) {
     globalThis.Request = Request;
     globalThis.Response = Response;
 }
-

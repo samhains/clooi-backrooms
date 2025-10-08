@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import fs from 'fs';
+import fs, { existsSync, realpathSync } from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
 import { spawn } from 'child_process';
-import { writeFile, readFile } from 'fs/promises';
-import { existsSync, realpathSync } from 'fs';
-import { unlink } from 'fs/promises';
+import { writeFile, readFile, unlink } from 'fs/promises';
 
 import chokidar from 'chokidar';
 import ora from 'ora';
@@ -15,9 +13,11 @@ import inquirer from 'inquirer';
 import inquirerAutocompletePrompt from 'inquirer-autocomplete-prompt';
 import crypto from 'crypto';
 import readline from 'readline';
+import path from 'path';
+import os from 'os';
 import { getClient, getClientSettings } from './util.js';
-import { applyTemplateVariables } from '../utils/templateVars.js';
-import { getCid, savedStatesByConversation, getSavedIds } from '../utils/cache.js';
+import applyTemplateVariables from '../utils/templateVars.js';
+import { getCid } from '../utils/cache.js';
 import {
     getMessagesForConversation,
     getChildren,
@@ -25,22 +25,21 @@ import {
     getSiblingIndex,
     getParent,
 } from '../utils/conversation.js';
-import path from 'path';
-import os from 'os';
 import {
     listSaveStates,
     findSaveState,
     writeSaveState,
     generateUniqueSlug,
     formatSaveChoiceLabel,
-    readSaveStateBySlug,
     summarizeConversation,
 } from '../utils/saveStates.js';
-import { tryBoxen } from './boxen.js';
+import tryBoxen from './boxen.js';
 import { getBackroomsFiles, parseBackroomsLog } from './backrooms.js';
 import { systemMessageBox, suggestionsBoxes, replaceWhitespace } from './ui.js';
 import { logError, logSuccess, logWarning } from './logging.js';
-import { conversationStart as conversationStartBox, historyBoxes as renderHistoryBoxes, navButton as renderNavButton } from './history.js';
+import { conversationStart as conversationStartBox, historyBoxes as renderHistoryBoxes } from './history.js';
+
+import buildCommands from './commands.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const pathToSettings = arg?.split('=')[1] ?? './settings.js';
@@ -53,13 +52,12 @@ const INLINE_QUOTED_REGEX = /(["'`])([\s\S]*?)\1/g;
 let settings;
 let watcher;
 
-
 let conversationData = {};
 let responseData = {};
 let clientToUse;
 let client;
 let clientOptions;
-let navigationHistory = [];
+const navigationHistory = [];
 let localConversation = {};
 let steeringFeatures = {};
 let currentLoadedSave = null;
@@ -73,9 +71,8 @@ class AttachmentError extends Error {
 }
 
 function getStreamingPreviewLimit() {
-    const candidate =
-        Number(clientOptions?.modelOptions?.max_tokens) ||
-        Number(settings?.maxTokens);
+    const candidate = Number(clientOptions?.modelOptions?.max_tokens)
+        || Number(settings?.maxTokens);
     return Number.isFinite(candidate) && candidate > 0 ? candidate : Infinity;
 }
 
@@ -129,15 +126,14 @@ function createStreamingPreview(prefixLabel, limit = Infinity) {
     };
 }
 
-
-async function initializeSettingsWatcher(path) {
-    await updateSettings(path);
+async function initializeSettingsWatcher(settingsPath) {
+    await updateSettings(settingsPath);
 
     // stop the previous watcher if it exists
     await stopSettingsWatcher();
 
-    watcher = chokidar.watch(path);
-    watcher.on('change', () => updateSettings(path));
+    watcher = chokidar.watch(settingsPath);
+    watcher.on('change', () => updateSettings(settingsPath));
 
     return watcher;
 }
@@ -149,28 +145,25 @@ async function stopSettingsWatcher() {
     }
 }
 
-async function updateSettings(path) {
+async function updateSettings(settingsPath) {
+    if (existsSync(settingsPath)) {
+        const fullPath = realpathSync(settingsPath);
 
-
-    if (existsSync(path)) {
-        const fullPath = realpathSync(path);
-        const modulePath = pathToFileURL(fullPath).toString();
-        
         try {
             // Read the file contents
             const fileContent = await readFile(fullPath, 'utf8');
-            
+
             // Create a temporary file with a unique name
             const tempPath = `${fullPath}.${Date.now()}.tmp.js`;
             await writeFile(tempPath, fileContent);
-            
+
             // Import the temporary file
             const module = await import(pathToFileURL(tempPath).toString());
             settings = module.default;
-            
+
             // Delete the temporary file
             await unlink(tempPath);
-            
+
             // console.log('Settings reloaded');
         } catch (error) {
             console.error('Error loading settings:', error);
@@ -183,7 +176,6 @@ async function updateSettings(path) {
         }
         process.exit(1);
     }
-
 
     if (settings.storageFilePath && !settings.cacheOptions.store) {
         // make the directory and file if they don't exist
@@ -202,15 +194,12 @@ async function updateSettings(path) {
     // settings.bingAiClient.features = settings.bingAiClient.features || {};
     // settings.bingAiClient.features.genImage = false;
 
-    
     clientToUse = settings.cliOptions?.clientToUse || settings.clientToUse || 'openrouter';
     // console.log(settings)
 
     clientOptions = getClientSettings(clientToUse, settings);
     client = getClient(clientToUse, settings);
-
 }
-
 
 function sanitizeContextSlug(rawSlug) {
     if (!rawSlug) {
@@ -244,16 +233,13 @@ async function loadContextPrompt(slug) {
     };
 }
 
-
-
 async function loadSettings() {
-    
     await initializeSettingsWatcher(pathToSettings);
 
     conversationData = settings.cliOptions?.conversationData || settings.conversationData || {};
 
     responseData = {};
-    
+
     if (clientToUse === 'claude') {
         const claudeAscii = fs.readFileSync('./contexts/claudeLoomAscii.txt', 'utf8');
         // console.log(claudeAscii);
@@ -286,8 +272,6 @@ async function hasSiblings() {
     return getSiblings(localConversation.messages, conversationData.parentMessageId).length > 1;
 }
 
-import { buildCommands } from './commands.js';
-
 let availableCommands = buildCommands({
     showCommandDocumentation,
     importBackroomsLogFlow,
@@ -315,16 +299,17 @@ let availableCommands = buildCommands({
     exportConversation,
     loadConversation,
     debug,
-    steerCommand: async (args) => {
-        if (args.length == 1) {
+    steerCommand: async (args = []) => {
+        if (args.length === 1) {
             steeringFeatures = {};
             console.log('Reset steering features');
         } else if (args[1] === 'cat') {
             console.log('Steering features', steeringFeatures);
         } else {
             let amount = 10;
-            if (args[2] != null) {
-                amount = args[2];
+            const [, , rawAmount] = args;
+            if (rawAmount !== null && rawAmount !== undefined) {
+                amount = rawAmount;
             }
             steeringFeatures[`feat_34M_20240604_${args[1]}`] = Number(amount);
         }
@@ -338,6 +323,7 @@ let availableCommands = buildCommands({
         const lastConversation = await client.conversationsCache.get('lastConversation');
         return Boolean(lastConversation);
     },
+    conversation,
 });
 
 inquirer.registerPrompt('autocomplete', inquirerAutocompletePrompt);
@@ -365,7 +351,6 @@ async function showCommandDocumentation(command) {
     }
     return conversation();
 }
-
 
 async function conversation() {
     console.log('Type "!" to access the command menu.');
@@ -450,10 +435,10 @@ async function generateMessage() {
         null,
         {
             ...clientOptions.modelOptions,
-            ...(Object.keys(steeringFeatures) != 0 ? {
+            ...(Object.keys(steeringFeatures).length !== 0 ? {
                 steering: {
-                    feature_levels: steeringFeatures
-                }
+                    feature_levels: steeringFeatures,
+                },
             } : {}),
         },
         {
@@ -487,8 +472,8 @@ async function generateMessage() {
         text: spinnerPrefix,
         spinner: {
             interval: 80,
-            frames: ['⠧', '⠇', '⠏', '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏', '⠋']
-        }
+            frames: ['⠧', '⠇', '⠏', '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏', '⠋'],
+        },
     });
     spinner.prefixText = '\n   ';
     spinner.start();
@@ -578,7 +563,6 @@ async function generateMessage() {
 
         responseData.response = results;
 
-
         if (!streamedMessages[previewIdx]) {
             // console.log('not streaming');
             // remove event listeners
@@ -601,7 +585,6 @@ async function generateMessage() {
             await client.conversationsCache.set(conversationId, localConversation);
             // await pullFromCache();
 
-            
             return selectMessage(previewMessage.id, conversationId);
         }
 
@@ -613,11 +596,9 @@ async function generateMessage() {
         // showHistory();
         return null;
     } catch (error) {
-
-
         // remove event listeners
         process.removeAllListeners('SIGINT');
-    
+
         if (previewRenderer.isActive()) {
             previewRenderer.clear();
         } else {
@@ -836,12 +817,11 @@ async function selectSiblingMessage(index = null) {
     return selectMessage(siblingMessage.id);
 }
 
-async function debug(args) {
-
+async function debug() {
     console.log(clientOptions);
 
     // return loadByTree();
-    
+
     // console.log(conversationId);
     // const targetMessage = await getMessageByIndex(args[0], args[1]);
     // console.log(targetMessage.message);
@@ -885,7 +865,8 @@ function parseAiCommandArgs(args = []) {
 
         const contextMatch = token.match(/^(?:--context|-c)=(.+)$/);
         if (contextMatch) {
-            contextSlug = contextMatch[1];
+            const [, slugValue] = contextMatch;
+            contextSlug = slugValue;
             continue;
         }
 
@@ -921,12 +902,12 @@ function sanitizeComposeHistory(messages, assistantAuthor) {
         return `${index + 1}. ${descriptorParts.join(' – ')}`;
     };
 
-    return messages.map(message => {
+    return messages.map((message) => {
         if (!message || message.author !== assistantAuthor) {
             return message;
         }
 
-        const details = message.details;
+        const { details } = message;
         const attachments = Array.isArray(details?.attachments)
             ? details.attachments.filter(attachment => attachment?.type === 'image')
             : [];
@@ -993,7 +974,7 @@ function sanitizeComposeHistory(messages, assistantAuthor) {
     });
 }
 
-async function composeAiMessage(args = [], rawInput = '') {
+async function composeAiMessage(args = []) {
     const { contextSlug: explicitContextSlug, instructions: parsedInstructions } = parseAiCommandArgs(args);
     const configuredContext = settings?.config?.aiContext || settings?.config?.context || null;
     const contextSlug = explicitContextSlug || configuredContext;
@@ -1027,12 +1008,13 @@ async function composeAiMessage(args = [], rawInput = '') {
     await pullFromCache();
 
     const historyMessages = client.toMessages(getHistory());
-    const swappedMessages = historyMessages.map(message => {
-        const swappedAuthor = message.author === client.names.bot.author
-            ? client.names.user.author
-            : message.author === client.names.user.author
-                ? client.names.bot.author
-                : message.author;
+    const swappedMessages = historyMessages.map((message) => {
+        let swappedAuthor = message.author;
+        if (message.author === client.names.bot.author) {
+            swappedAuthor = client.names.user.author;
+        } else if (message.author === client.names.user.author) {
+            swappedAuthor = client.names.bot.author;
+        }
         return {
             ...message,
             author: swappedAuthor,
@@ -1179,28 +1161,28 @@ function isExistingFile(filePath) {
 function detectMimeType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     switch (ext) {
-    case '.jpg':
-    case '.jpeg':
-        return 'image/jpeg';
-    case '.png':
-        return 'image/png';
-    case '.gif':
-        return 'image/gif';
-    case '.webp':
-        return 'image/webp';
-    case '.bmp':
-        return 'image/bmp';
-    case '.heic':
-        return 'image/heic';
-    case '.heif':
-        return 'image/heif';
-    case '.tif':
-    case '.tiff':
-        return 'image/tiff';
-    case '.avif':
-        return 'image/avif';
-    default:
-        return 'application/octet-stream';
+        case '.jpg':
+        case '.jpeg':
+            return 'image/jpeg';
+        case '.png':
+            return 'image/png';
+        case '.gif':
+            return 'image/gif';
+        case '.webp':
+            return 'image/webp';
+        case '.bmp':
+            return 'image/bmp';
+        case '.heic':
+            return 'image/heic';
+        case '.heif':
+            return 'image/heif';
+        case '.tif':
+        case '.tiff':
+            return 'image/tiff';
+        case '.avif':
+            return 'image/avif';
+        default:
+            return 'application/octet-stream';
     }
 }
 
@@ -1286,7 +1268,7 @@ function extractInlineImageReferences(message) {
     }
     const references = new Map();
 
-    const remember = candidate => {
+    const remember = (candidate) => {
         const normalized = normalizeImageReference(candidate);
         if (!normalized || !isLikelyImageReference(normalized)) {
             return;
@@ -1296,13 +1278,18 @@ function extractInlineImageReferences(message) {
         }
     };
 
-    let match;
-    while ((match = MARKDOWN_IMAGE_REGEX.exec(message)) !== null) {
-        remember(match[1]);
+    MARKDOWN_IMAGE_REGEX.lastIndex = 0;
+    let markdownMatch = MARKDOWN_IMAGE_REGEX.exec(message);
+    while (markdownMatch) {
+        remember(markdownMatch[1]);
+        markdownMatch = MARKDOWN_IMAGE_REGEX.exec(message);
     }
 
-    while ((match = INLINE_QUOTED_REGEX.exec(message)) !== null) {
-        remember(match[2]);
+    INLINE_QUOTED_REGEX.lastIndex = 0;
+    let quotedMatch = INLINE_QUOTED_REGEX.exec(message);
+    while (quotedMatch) {
+        remember(quotedMatch[2]);
+        quotedMatch = INLINE_QUOTED_REGEX.exec(message);
     }
 
     for (const token of message.split(/\s+/)) {
@@ -1391,6 +1378,7 @@ async function collectInlineImageAttachments(message) {
         }
         seen.add(dedupeKey);
         try {
+            // eslint-disable-next-line no-await-in-loop
             const attachment = await createImageAttachment(source, {
                 requireAbsoluteForLocal: !isRemote,
             });
@@ -1696,12 +1684,18 @@ async function saveConversationState(name = null, data = conversationData) {
 }
 
 async function applySavedState(savedState) {
-    const { conversationData, conversation: savedConversation, name, relativePath, filePath } = savedState;
-    if (!conversationData) {
+    const {
+        conversationData: savedConversationData,
+        conversation: savedConversation,
+        name,
+        relativePath,
+        filePath,
+    } = savedState;
+    if (!savedConversationData) {
         logWarning('Saved state is missing conversation data.');
         return conversation();
     }
-    const conversationId = getConversationId(conversationData);
+    const conversationId = getConversationId(savedConversationData);
     if (!conversationId) {
         logWarning('Saved state does not include a conversation id.');
         return conversation();
@@ -1710,12 +1704,12 @@ async function applySavedState(savedState) {
     if (savedConversation) {
         await client.conversationsCache.set(conversationId, savedConversation);
     }
-    await client.conversationsCache.set(name, conversationData);
+    await client.conversationsCache.set(name, savedConversationData);
     const currentStates = await listSaveStates();
     await client.conversationsCache.set('savedConversations', currentStates.map(state => state.name));
 
     await setConversationData({
-        ...conversationData,
+        ...savedConversationData,
         conversationId,
     });
 
@@ -1754,78 +1748,17 @@ async function loadConversationState(name = 'lastConversation') {
     return conversation();
 }
 
-async function loadByTree() {
-    const conversationsWithSavedStates = await savedStatesByConversation(client.conversationsCache);
-    const conversationEntries = Object.entries(conversationsWithSavedStates);
-    if (conversationEntries.length === 0) {
-        logWarning('No saved conversations.');
-        return conversation();
-    }
-
-    const { conversationId } = await inquirer.prompt([
-        {
-            type: 'list',
-            name: 'conversationId',
-            message: 'Select a tree:',
-            choices: conversationEntries.map(([id, info]) => ({
-                name: `${info?.name || id} (${info?.states?.length || 0} saved states)`,
-                value: id,
-            })),
-            pageSize: Math.min(conversationEntries.length * 2, 15),
-        },
-    ]);
-    if (!conversationId) {
-        logWarning('No conversation id.');
-        return conversation();
-    }
-
-    const savedStatesInTree = conversationsWithSavedStates[conversationId]?.states || [];
-    if (savedStatesInTree.length === 0) {
-        logWarning('No saved conversations for this tree.');
-        return conversation();
-    }
-
-    let name;
-    const { conversationName } = await inquirer.prompt([
-        {
-            type: 'list',
-            name: 'conversationName',
-            message: 'Select a conversation to load:',
-            choices: savedStatesInTree.map(state => ({
-                name: state.savedAt ? `${state.name} (${new Date(state.savedAt).toLocaleString()})` : state.name,
-                value: state.name,
-            })),
-            pageSize: Math.min(savedStatesInTree.length * 2, 20),
-        },
-    ]);
-    name = conversationName;
-    if (!name) {
-        logWarning('No conversation name.');
-        return conversation();
-    }
-    const targetMeta = savedStatesInTree.find(state => state.name === name);
-    if (targetMeta?.slug) {
-        const hydrated = await readSaveStateBySlug(targetMeta.slug);
-        if (hydrated) {
-            return applySavedState(hydrated);
-        }
-    }
-    return loadConversationState(name);
-}
-
 async function systemPromptSelection(name = null) {
     // Get list of .txt files in contexts directory (excluding files subdirectory)
     const getContextFiles = () => {
         try {
             const files = fs.readdirSync(CONTEXTS_DIR)
-                .filter(file =>
-                    file.endsWith(CONTEXT_EXTENSION) &&
-                    !fs.statSync(path.join(CONTEXTS_DIR, file)).isDirectory()
-                )
+                .filter(file => file.endsWith(CONTEXT_EXTENSION)
+                    && !fs.statSync(path.join(CONTEXTS_DIR, file)).isDirectory())
                 .map(file => ({
                     name: file.replace(CONTEXT_EXTENSION, ''),
                     filename: file,
-                    fullPath: path.join(CONTEXTS_DIR, file)
+                    fullPath: path.join(CONTEXTS_DIR, file),
                 }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1861,7 +1794,6 @@ async function systemPromptSelection(name = null) {
 
             logSuccess(`Loaded system prompt: ${name}`);
             console.log(`\nContext preview (first 200 chars):\n${contextContent.slice(0, 200)}${contextContent.length > 200 ? '...' : ''}\n`);
-
         } catch (error) {
             logWarning(`Error loading context file: ${error.message}`);
         }
@@ -1956,14 +1888,15 @@ async function loadSavedState(name = null) {
 }
 
 async function loadConversation(conversationId) {
-    // const { messages } = await client.conversationsCache.get(conversationId);
-    if (!localConversation.messages) {
+    const cachedConversation = await client.conversationsCache.get(conversationId);
+    const messageList = cachedConversation?.messages || [];
+    if (messageList.length === 0) {
         logWarning('Conversation not found.');
         return conversation();
     }
-    // conversationData.conversationId = conversationId;
-    const lastMessageId = localConversation.messages[messages.length - 1].id;
-    // conversationData.parentMessageId = lastMessageId;
+
+    const lastMessageId = messageList[messageList.length - 1]?.id || null;
+
     await setConversationData({
         conversationId,
         parentMessageId: lastMessageId,
@@ -2176,15 +2109,13 @@ function aiMessageBox(message, title = null) {
         },
         dimBorder: true,
         // Let tryBoxen calculate proper width for complex content
-        width: hasComplexFormatting ? undefined : (Math.min(80, process.stdout.columns - 4) || 76)
+        width: hasComplexFormatting ? undefined : (Math.min(80, process.stdout.columns - 4) || 76),
     });
 }
 
 function conversationStart() {
     console.log(conversationStartBox(getConversationId()));
 }
-
-const navButton = renderNavButton;
 
 function historyBoxes() {
     const messageHistory = getHistory();
@@ -2237,8 +2168,8 @@ async function getCachedConversation() {
         // logWarning('No message id.');
         return [];
     }
-    const _conversation = await client.conversationsCache.get(getConversationId());
-    return _conversation;
+    const cachedConversation = await client.conversationsCache.get(getConversationId());
+    return cachedConversation;
 }
 
 async function pullFromCache() {
@@ -2251,7 +2182,6 @@ async function pushToCache() {
     }
     await client.conversationsCache.set(getConversationId(), localConversation);
 }
-
 
 function getHistory() {
     // const messages = await conversationMessages();

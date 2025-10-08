@@ -5,17 +5,17 @@
  * @param {Record<string, unknown>} variables
  * @returns {string}
  */
-export function applyTemplateVariables(template, variables) {
-  if (typeof template !== 'string' || !variables || typeof variables !== 'object') {
-    return template;
-  }
-
-  return template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key) => {
-    if (!Object.prototype.hasOwnProperty.call(variables, key)) {
-      return match;
+export default function applyTemplateVariables(template, variables) {
+    if (typeof template !== 'string' || !variables || typeof variables !== 'object') {
+        return template;
     }
 
-    const value = variables[key];
-    return typeof value === 'string' ? value : String(value ?? '');
-  });
+    return template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key) => {
+        if (!Object.prototype.hasOwnProperty.call(variables, key)) {
+            return match;
+        }
+
+        const value = variables[key];
+        return typeof value === 'string' ? value : String(value ?? '');
+    });
 }

@@ -7,8 +7,7 @@ import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
 import { getClient } from '../cli/util.js';
-import { on } from 'events';
-import { nextTick, filterClientOptions } from '../src/server/utils.js';
+import { nextTick, filterClientOptions } from './utils.js';
 
 const arg = process.argv.find(_arg => _arg.startsWith('--settings'));
 const path = arg?.split('=')[1] ?? './settings.js';
@@ -92,25 +91,35 @@ server.post('/conversation', async (request, reply) => {
             throw invalidError;
         }
 
-        let clientToUseForMessage = body.client || clientToUse;
+        const clientToUseForMessage = body.client || clientToUse;
 
         const messageClient = getClient(clientToUseForMessage, settings);
+
+        const requestOptions = {
+            ...(body.opts || {}),
+            abortController,
+            onProgress,
+            onFinished: async (idx) => {
+                console.log('Finished', idx);
+            },
+        };
+
+        const filteredClientOptions = filterClientOptions(
+            requestOptions.clientOptions || body.clientOptions || null,
+            clientToUseForMessage,
+            perMessageClientOptionsWhitelist,
+        );
+        if (filteredClientOptions) {
+            requestOptions.clientOptions = filteredClientOptions;
+        }
 
         result = await messageClient.standardCompletion(
             body.messages,
             body.modelOptions,
-            // apiParams,
             {
-                // n: 1,
-                ...body.opts,
-                abortController: abortController,
-                onProgress,
-                onFinished: async (idx) => {
-                    console.log('Finished', idx);
-                }
-            }
-        )
-
+                ...requestOptions,
+            },
+        );
     } catch (e) {
         error = e;
     }
@@ -134,7 +143,7 @@ server.post('/conversation', async (request, reply) => {
     } else if (settings.apiOptions?.debug) {
         console.debug(error);
     }
-    const message = error?.data?.message || error?.message || `There was an error communicating with OpenRouter.`;
+    const message = error?.data?.message || error?.message || 'There was an error communicating with OpenRouter.';
     if (stream === true) {
         reply.sse({
             id: '',
