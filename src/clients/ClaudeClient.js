@@ -219,8 +219,9 @@ export default class ClaudeClient extends ChatClient {
         const body = {
             ...restOptions,
             stream: shouldStream,
-            ...(resolvedMaxTokens != null ? { max_output_tokens: resolvedMaxTokens } : {}),
+            ...(resolvedMaxTokens != null ? { max_tokens: resolvedMaxTokens } : {}),
         };
+        delete body.max_output_tokens;
 
         // Anthropic does not support parallel samples via `n` yet.
         delete body.n;

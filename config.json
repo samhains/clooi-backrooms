@@ -1,11 +1,12 @@
 {
   "context": "cliColor",
-  "aiContext": "cliColor",
+  "aiContext": "cliOperator",
   "model": "sonnet4",
-  "maxTokens": 4096,
+  "maxTokens": 16000,
   "vars": {
     "form": "Emoji",
     "model1_company": "anthropic",
-    "recurring_characters": "@file:recurring_characters.json"
+    "recurring_characters": "@file:recurring_characters_v3.json",
+    "prompt_guide": "@file:eagle_prompt_reference_v4.json"
   }
 }

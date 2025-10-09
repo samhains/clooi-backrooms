@@ -1,0 +1,5 @@
+### User ###
+cat recurring_characters.json
+
+### Assistant ###
+{recurring_characters}
