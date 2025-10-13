@@ -4,7 +4,12 @@ import fs, { existsSync, realpathSync } from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
 import { spawn } from 'child_process';
-import { writeFile, readFile, unlink } from 'fs/promises';
+import {
+    writeFile,
+    readFile,
+    unlink,
+    mkdir,
+} from 'fs/promises';
 
 import chokidar from 'chokidar';
 import ora from 'ora';
@@ -37,7 +42,7 @@ import tryBoxen from './boxen.js';
 import { getBackroomsFiles, parseBackroomsLog } from './backrooms.js';
 import { systemMessageBox, suggestionsBoxes, replaceWhitespace } from './ui.js';
 import { logError, logSuccess, logWarning } from './logging.js';
-import { conversationStart as conversationStartBox, historyBoxes as renderHistoryBoxes } from './history.js';
+import { conversationStart as conversationStartBox, historyBoxes as renderHistoryBoxes, conversationMessageBox } from './history.js';
 
 import buildCommands from './commands.js';
 
@@ -288,6 +293,7 @@ let availableCommands = buildCommands({
     selectSiblingMessage,
     rewindTo,
     printOrCopyData,
+    renderLastMessage,
     useEditor,
     useEditorPlain,
     editMessage,
@@ -2125,6 +2131,256 @@ function historyBoxes() {
         getAILabel,
         userDisplay: client.names.user.display,
     });
+}
+
+function slugifyForFilename(input, fallback = 'message') {
+    const normalized = String(input ?? '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    return normalized || fallback;
+}
+
+function ensureUniquePath(targetPath) {
+    if (!existsSync(targetPath)) {
+        return targetPath;
+    }
+    const parsed = path.parse(targetPath);
+    let counter = 1;
+    let candidate = path.join(parsed.dir, `${parsed.name}-${counter}${parsed.ext}`);
+    while (existsSync(candidate)) {
+        counter += 1;
+        candidate = path.join(parsed.dir, `${parsed.name}-${counter}${parsed.ext}`);
+    }
+    return candidate;
+}
+
+function getRenderConfig() {
+    const configSource = settings?.config?.rendering;
+    const cliSource = settings?.cliOptions?.rendering;
+    if (configSource && cliSource) {
+        return {
+            ...configSource,
+            ...cliSource,
+        };
+    }
+    return configSource || cliSource || {};
+}
+
+async function runWeztermCommand(args, { inheritStdio = false } = {}) {
+    const renderConfig = getRenderConfig();
+    const weztermExecutable = renderConfig.weztermExecutable || 'wezterm';
+    return new Promise((resolve, reject) => {
+        const child = spawn(weztermExecutable, args, {
+            stdio: inheritStdio ? 'inherit' : ['ignore', 'pipe', 'pipe'],
+        });
+        let stdout = '';
+        let stderr = '';
+        if (!inheritStdio) {
+            if (child.stdout) {
+                child.stdout.on('data', (chunk) => {
+                    stdout += chunk.toString();
+                });
+            }
+            if (child.stderr) {
+                child.stderr.on('data', (chunk) => {
+                    stderr += chunk.toString();
+                });
+            }
+        }
+        child.on('error', (error) => {
+            if (!inheritStdio && stderr) {
+                error.stderr = stderr;
+            }
+            reject(error);
+        });
+        child.on('exit', (code) => {
+            if (code === 0) {
+                resolve({ stdout, stderr });
+            } else {
+                const error = new Error(`WezTerm exited with code ${code}`);
+                error.code = code;
+                error.stdout = stdout;
+                error.stderr = stderr;
+                reject(error);
+            }
+        });
+    });
+}
+
+async function detectWeztermPaneId(titleHint = null) {
+    try {
+        const { stdout } = await runWeztermCommand(['cli', 'list', '--format', 'json']);
+        const panes = JSON.parse(stdout);
+        if (!Array.isArray(panes) || panes.length === 0) {
+            return null;
+        }
+        const normalizedHint = typeof titleHint === 'string' ? titleHint.toLowerCase() : null;
+        if (normalizedHint) {
+            const hinted = panes.find(pane => pane?.title?.toLowerCase?.().includes(normalizedHint));
+            if (hinted?.pane_id) {
+                return String(hinted.pane_id);
+            }
+        }
+        const zellijPane = panes.find(pane => pane?.title?.toLowerCase?.().includes('zellij'));
+        if (zellijPane?.pane_id) {
+            return String(zellijPane.pane_id);
+        }
+        const fallbackPane = panes.find(pane => pane?.pane_id);
+        return fallbackPane ? String(fallbackPane.pane_id) : null;
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            throw error;
+        }
+        return null;
+    }
+}
+
+async function renderLastMessage(rawArgs = []) {
+    const messageHistory = getHistory();
+    if (!messageHistory || messageHistory.length === 0) {
+        logWarning('No messages available to render.');
+        return conversation();
+    }
+
+    const args = Array.isArray(rawArgs) ? rawArgs.slice(1) : [];
+    let customSlug = null;
+    let overridePaneId = null;
+    let customDir = null;
+    let customOutput = null;
+    const extraWeztermArgs = [];
+
+    for (let index = 0; index < args.length; index += 1) {
+        const option = args[index];
+        if (!option) {
+            continue;
+        }
+        if (option === '--pane' || option === '--pane-id') {
+            overridePaneId = args[index + 1];
+            index += 1;
+            continue;
+        }
+        if (option.startsWith('--pane=')) {
+            overridePaneId = option.slice('--pane='.length);
+            continue;
+        }
+        if (option.startsWith('--pane-id=')) {
+            overridePaneId = option.slice('--pane-id='.length);
+            continue;
+        }
+        if (option === '--dir') {
+            customDir = args[index + 1];
+            index += 1;
+            continue;
+        }
+        if (option.startsWith('--dir=')) {
+            customDir = option.slice('--dir='.length);
+            continue;
+        }
+        if (option === '--output') {
+            customOutput = args[index + 1];
+            index += 1;
+            continue;
+        }
+        if (option.startsWith('--output=')) {
+            customOutput = option.slice('--output='.length);
+            continue;
+        }
+        if (!customSlug && !option.startsWith('--')) {
+            customSlug = option;
+            continue;
+        }
+        extraWeztermArgs.push(option);
+    }
+
+    const renderConfig = getRenderConfig();
+    const baseDirSetting = customDir ?? renderConfig.outputDir ?? './renders';
+    const resolvedDir = path.isAbsolute(baseDirSetting)
+        ? baseDirSetting
+        : path.resolve(baseDirSetting);
+
+    try {
+        await mkdir(resolvedDir, { recursive: true });
+    } catch (error) {
+        logError(`Failed to prepare render directory: ${error.message}`);
+        return conversation();
+    }
+
+    const lastMessage = messageHistory[messageHistory.length - 1];
+    const roleSlug = slugifyForFilename(lastMessage.role || 'message', 'message');
+    const messagePreview = slugifyForFilename(lastMessage.message?.slice?.(0, 32) || '', roleSlug);
+    const slug = customSlug ? slugifyForFilename(customSlug) : `${roleSlug}-${messagePreview}`;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const suggestedPath = path.join(resolvedDir, `${timestamp}-${slug}.png`);
+
+    let resolvedOutputPath = suggestedPath;
+    if (customOutput) {
+        resolvedOutputPath = path.isAbsolute(customOutput)
+            ? customOutput
+            : path.resolve(customOutput);
+    }
+
+    try {
+        await mkdir(path.dirname(resolvedOutputPath), { recursive: true });
+    } catch (error) {
+        logError(`Failed to prepare output directory: ${error.message}`);
+        return conversation();
+    }
+
+    const outputPath = ensureUniquePath(resolvedOutputPath);
+
+    const displayContext = {
+        messages: localConversation.messages,
+        getAILabel,
+        userDisplay: client.names.user.display,
+    };
+    const renderedBox = conversationMessageBox(lastMessage, displayContext, messageHistory.length - 1);
+    if (renderConfig.echo !== false) {
+        console.log(renderedBox);
+    }
+
+    let paneId = overridePaneId
+        || renderConfig.paneId
+        || process.env.WEZTERM_PANE
+        || null;
+
+    if (!paneId && renderConfig.autoDetectPane !== false) {
+        try {
+            paneId = await detectWeztermPaneId(renderConfig.paneTitleHint);
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                logError('WezTerm CLI not found. Install WezTerm or set rendering.weztermExecutable.');
+                return conversation();
+            }
+            paneId = null;
+        }
+    }
+
+    const screenshotArgs = Array.isArray(renderConfig.screenshotArgs)
+        ? renderConfig.screenshotArgs.filter(Boolean)
+        : [];
+    const weztermArgs = ['cli', 'screenshot', ...screenshotArgs, ...extraWeztermArgs];
+    if (paneId) {
+        weztermArgs.push('--pane-id', paneId);
+    }
+    weztermArgs.push('--output', outputPath);
+
+    try {
+        await runWeztermCommand(weztermArgs);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            logError('WezTerm CLI not found. Install WezTerm to enable !render.');
+        } else if (error.stderr) {
+            logError(`Failed to capture screenshot: ${error.stderr.trim() || error.message}`);
+        } else {
+            logError(`Failed to capture screenshot: ${error.message}`);
+        }
+        return conversation();
+    }
+
+    const relativePath = path.relative(process.cwd(), outputPath);
+    logSuccess(`Rendered PNG saved to ${relativePath}`);
+    return conversation();
 }
 
 function showHistory() {

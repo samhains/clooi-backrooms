@@ -69,6 +69,34 @@ return {
 - Press `CTRL+SHIFT+P` to save the current pane to `~/Pictures`.
 - Adjust keybinding or output path as needed.
 
+## CLI Shortcut (`!render`)
+
+- Inside the CLI, run `!render` to re-print the latest message box and save the active WezTerm pane as a PNG.
+- Optional arguments: `!render cover-art --dir=./renders/covers --pane-id=<id>` or `!render --output ~/Pictures/custom.png`.
+- Unknown `--foo` flags are forwarded to `wezterm cli screenshot` so you can append options such as `--no-gui`.
+- By default the command looks for `WEZTERM_PANE`, otherwise it will try to pick the first pane whose title contains “zellij”.
+
+### Config Defaults
+
+Add to `config.json` (or the merged `settings.cliOptions.rendering`) to tweak the behavior:
+
+```json
+"rendering": {
+  "outputDir": "./renders",
+  "paneTitleHint": "zellij",
+  "screenshotArgs": ["--no-gui"],
+  "weztermExecutable": "/Applications/WezTerm.app/Contents/MacOS/wezterm"
+}
+```
+
+Fields:
+
+- `outputDir` – default directory when `--dir`/`--output` aren’t supplied.
+- `paneId` – hard-code a pane id if auto-detection is unreliable.
+- `paneTitleHint` – substring used when scanning `wezterm cli list`.
+- `screenshotArgs` – extra arguments appended to every `wezterm cli screenshot`.
+- `weztermExecutable` – override the binary path if `wezterm` isn’t on `$PATH`.
+
 ## Workflow Tips
 
 - Combine `wezterm cli get-text` with tools like `charmbracelet/vhs` or `svgt` to generate animated assets while keeping WezTerm’s colors.

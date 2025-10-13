@@ -19,6 +19,7 @@ export default function buildCommands(api) {
         selectSiblingMessage,
         rewindTo,
         printOrCopyData,
+        renderLastMessage,
         useEditor,
         useEditorPlain,
         editMessage,
@@ -178,6 +179,15 @@ export default function buildCommands(api) {
             description:
         'Print data to console.\n\t[type]: !pr . prints current node text. If arguments aren\'t provided, opens dropdown for types of data to print.',
             command: async args => printOrCopyData('print', args.slice(1)),
+        },
+        {
+            name: '!render - Save last message as PNG',
+            value: '!render',
+            usage: '!render [slug] [--pane-id=<id>] [--dir=<path>] [--output=<path>]',
+            description:
+        'Capture the active WezTerm pane as a PNG and store it locally.\n\t[slug]: Optional filename fragment (defaults to role + message snippet).\n\t--pane-id: Override pane detection.\n\t--dir/--output: Override the destination directory or file path.',
+            available: hasConversationId,
+            command: async args => renderLastMessage(args),
         },
         {
             name: '!ml - Open the editor (for multi-line messages)',
