@@ -183,9 +183,9 @@ export default function buildCommands(api) {
         {
             name: '!render - Generate PNG or HTML with ANSI content',
             value: '!render',
-            usage: '!render [slug] [--dir=<path>] [--output=<path>] [--png] [--html] [--conversation] [--index]',
+            usage: '!render [slug] [--dir=<path>] [--output=<path>] [--png] [--html] [--conversation] [--index] [--hd] [--dpi=<number>]',
             description:
-        'Generate PNG or HTML files with full ANSI content preservation.\n\t[slug]: Optional filename fragment (defaults to role + message snippet).\n\t--dir/--output: Override the destination directory or file path.\n\t--png: Generate PNG image from HTML (supports long content).\n\t--html: Generate HTML file with ANSI formatting (opens in browser).\n\t--conversation/-c: Export entire conversation path (works with --png or --html).\n\t--index: Generate portfolio index of all conversation renders.',
+        'Generate PNG or HTML files with full ANSI content preservation.\n\t[slug]: Optional filename fragment (defaults to role + message snippet).\n\t--dir/--output: Override the destination directory or file path.\n\t--png: Generate PNG image from HTML (supports long content).\n\t--html: Generate HTML file with ANSI formatting (opens in browser).\n\t--conversation/-c: Export entire conversation path (works with --png or --html).\n\t--index: Generate portfolio index of all conversation renders.\n\t--hd: Generate high-density PNG (2x resolution, 192 DPI).\n\t--dpi=<number>: Custom DPI for PNG generation (e.g., --dpi=300).',
             available: hasConversationId,
             command: async args => renderLastMessage(args),
         },

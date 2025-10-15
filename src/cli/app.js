@@ -2257,6 +2257,8 @@ async function renderLastMessage(rawArgs = []) {
     let htmlMode = false;
     let conversationMode = false;
     let indexMode = false;
+    let hdMode = false;
+    let customDpi = null;
 
     for (let index = 0; index < args.length; index += 1) {
         const option = args[index];
@@ -2297,6 +2299,19 @@ async function renderLastMessage(rawArgs = []) {
         if (option === '--index') {
             indexMode = true;
             htmlMode = true; // index mode implies HTML
+            continue;
+        }
+        if (option === '--hd' || option === '--high-density') {
+            hdMode = true;
+            continue;
+        }
+        if (option === '--dpi') {
+            customDpi = parseInt(args[index + 1], 10);
+            index += 1;
+            continue;
+        }
+        if (option.startsWith('--dpi=')) {
+            customDpi = parseInt(option.slice('--dpi='.length), 10);
             continue;
         }
         if (!customSlug && !option.startsWith('--')) {
@@ -2601,17 +2616,48 @@ ${htmlContent}
 </html>`;
 
         try {
-            logSuccess('Generating PNG from HTML...');
+            // Calculate pixel density settings
+            const baseDpi = 96; // Standard web DPI
+            let targetDpi = baseDpi;
+            let scaleFactor = 1;
+
+            if (customDpi) {
+                targetDpi = customDpi;
+                scaleFactor = customDpi / baseDpi;
+            } else if (hdMode) {
+                targetDpi = 192; // 2x density for HD
+                scaleFactor = 2;
+            }
+
+            const scaledWidth = Math.round(820 * scaleFactor);
+            const scaledFontSize = Math.round(14 * scaleFactor);
+
+            logSuccess(`Generating ${hdMode || customDpi ? 'high-density ' : ''}PNG from HTML... (${targetDpi} DPI)`);
+
+            // Update HTML template with scaled dimensions
+            const hdHtmlTemplate = htmlTemplate.replace(
+                'width: 820px;',
+                `width: ${scaledWidth}px;`
+            ).replace(
+                'font-size: 14px;',
+                `font-size: ${scaledFontSize}px;`
+            );
 
             const image = await nodeHtmlToImage({
-                html: htmlTemplate,
+                html: hdHtmlTemplate,
                 type: 'png',
                 puppeteerArgs: {
                     args: ['--no-sandbox', '--disable-setuid-sandbox']
                 },
                 content: {
                     title: title
-                }
+                },
+                // Set viewport for high DPI rendering
+                ...(scaleFactor > 1 && {
+                    width: scaledWidth + 40, // Add padding for margins
+                    height: 1000, // Initial height, will expand as needed
+                    deviceScaleFactor: scaleFactor
+                })
             });
 
             await writeFile(outputPath, image);
