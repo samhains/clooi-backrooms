@@ -5,6 +5,7 @@ import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
 import { spawn } from 'child_process';
 import Convert from 'ansi-to-html';
+import nodeHtmlToImage from 'node-html-to-image';
 import {
     writeFile,
     readFile,
@@ -2252,8 +2253,7 @@ async function renderLastMessage(rawArgs = []) {
     let customSlug = null;
     let customDir = null;
     let customOutput = null;
-    let interactiveMode = false;
-    let windowMode = false;
+    let pngMode = false;
     let htmlMode = false;
     let conversationMode = false;
     let indexMode = false;
@@ -2281,12 +2281,8 @@ async function renderLastMessage(rawArgs = []) {
             customOutput = option.slice('--output='.length);
             continue;
         }
-        if (option === '--interactive' || option === '-i') {
-            interactiveMode = true;
-            continue;
-        }
-        if (option === '--window' || option === '-w') {
-            windowMode = true;
+        if (option === '--png') {
+            pngMode = true;
             continue;
         }
         if (option === '--html') {
@@ -2526,40 +2522,113 @@ ${htmlContent}
         return conversation();
     }
 
-    // Build screencapture command
-    const screencaptureArgs = [
-        '-x', // no sounds
-        '-t', 'png', // PNG format
-    ];
+    // PNG mode - generate PNG from HTML
+    if (pngMode) {
+        const convert = new Convert({
+            fg: '#FFF',
+            bg: '#000',
+            newline: true,
+            escapeXML: true,
+        });
 
-    if (interactiveMode) {
-        screencaptureArgs.push('-i'); // interactive mode
-    } else if (windowMode) {
-        screencaptureArgs.push('-w'); // window selection mode
-    } else {
-        // Default: try to capture the active window
-        screencaptureArgs.push('-w');
-    }
+        let htmlContent;
+        let title;
 
-    screencaptureArgs.push(outputPath);
+        if (conversationMode) {
+            // Render entire conversation
+            const conversationId = getConversationId();
+            const conversationSummary = summarizeConversation(localConversation) || 'Conversation';
 
-    logSuccess(`Taking screenshot... ${interactiveMode ? 'Select area or window.' : windowMode ? 'Click on window to capture.' : 'Capturing active window.'}`);
+            title = `CLooI Conversation - ${conversationSummary}`;
 
-    try {
-        await runCommand('screencapture', screencaptureArgs);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            logError('screencapture command not found. This feature requires macOS.');
-        } else if (error.stderr) {
-            logError(`Failed to capture screenshot: ${error.stderr.trim() || error.message}`);
+            // Generate conversation header
+            const conversationHeader = `
+┌─ CLooI Conversation Export ─────────────────────────────────────────┐
+│ Conversation ID: ${conversationId || 'N/A'}                                        │
+│ Messages: ${messageHistory.length}                                                     │
+│ Exported: ${new Date().toISOString()}                              │
+│ Summary: ${conversationSummary}                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+`;
+
+            // Render all messages in the conversation
+            const conversationContent = messageHistory.map((message, index) => {
+                const messageBox = conversationMessageBox(message, displayContext, index);
+                return messageBox;
+            }).join('\n\n');
+
+            htmlContent = convert.toHtml(conversationHeader + conversationContent);
         } else {
-            logError(`Failed to capture screenshot: ${error.message}`);
+            // Render single message
+            title = `CLooI Render - ${lastMessage.role}`;
+            htmlContent = convert.toHtml(renderedBox);
         }
+
+        const htmlTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.2;
+            margin: 20px;
+            padding: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            width: 1200px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 100%;
+            overflow-x: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+${htmlContent}
+    </div>
+</body>
+</html>`;
+
+        try {
+            logSuccess('Generating PNG from HTML...');
+
+            const image = await nodeHtmlToImage({
+                html: htmlTemplate,
+                type: 'png',
+                puppeteerArgs: {
+                    args: ['--no-sandbox', '--disable-setuid-sandbox']
+                },
+                content: {
+                    title: title
+                }
+            });
+
+            await writeFile(outputPath, image);
+            const relativePath = path.relative(process.cwd(), outputPath);
+
+            if (conversationMode) {
+                logSuccess(`Conversation PNG exported to ${relativePath} (${messageHistory.length} messages)`);
+            } else {
+                logSuccess(`PNG render saved to ${relativePath}`);
+            }
+
+        } catch (error) {
+            logError(`Failed to generate PNG: ${error.message}`);
+        }
+
         return conversation();
     }
 
-    const relativePath = path.relative(process.cwd(), outputPath);
-    logSuccess(`Screenshot saved to ${relativePath}`);
+    logWarning('No valid render mode specified. Use --html, --png, --conversation, or --index.');
     return conversation();
 }
 

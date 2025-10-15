@@ -55,6 +55,7 @@
     "inquirer-autocomplete-prompt": "^3.0.0",
     "keyv": "^4.5.2",
     "keyv-file": "^0.2.0",
+    "node-html-to-image": "^5.0.0",
     "openai": "^4.42.0",
     "ora": "^7.0.1",
     "strip-ansi": "^7.1.0",
