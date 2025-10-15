@@ -4,6 +4,7 @@ import fs, { existsSync, realpathSync } from 'fs';
 import { pathToFileURL } from 'url';
 import { KeyvFile } from 'keyv-file';
 import { spawn } from 'child_process';
+import Convert from 'ansi-to-html';
 import {
     writeFile,
     readFile,
@@ -2167,11 +2168,9 @@ function getRenderConfig() {
     return configSource || cliSource || {};
 }
 
-async function runWeztermCommand(args, { inheritStdio = false } = {}) {
-    const renderConfig = getRenderConfig();
-    const weztermExecutable = renderConfig.weztermExecutable || 'wezterm';
+async function runCommand(command, args, { inheritStdio = false } = {}) {
     return new Promise((resolve, reject) => {
-        const child = spawn(weztermExecutable, args, {
+        const child = spawn(command, args, {
             stdio: inheritStdio ? 'inherit' : ['ignore', 'pipe', 'pipe'],
         });
         let stdout = '';
@@ -2198,7 +2197,7 @@ async function runWeztermCommand(args, { inheritStdio = false } = {}) {
             if (code === 0) {
                 resolve({ stdout, stderr });
             } else {
-                const error = new Error(`WezTerm exited with code ${code}`);
+                const error = new Error(`${command} exited with code ${code}`);
                 error.code = code;
                 error.stdout = stdout;
                 error.stderr = stderr;
@@ -2206,6 +2205,12 @@ async function runWeztermCommand(args, { inheritStdio = false } = {}) {
             }
         });
     });
+}
+
+async function runWeztermCommand(args, { inheritStdio = false } = {}) {
+    const renderConfig = getRenderConfig();
+    const weztermExecutable = renderConfig.weztermExecutable || 'wezterm';
+    return runCommand(weztermExecutable, args, { inheritStdio });
 }
 
 async function detectWeztermPaneId(titleHint = null) {
@@ -2245,27 +2250,15 @@ async function renderLastMessage(rawArgs = []) {
 
     const args = Array.isArray(rawArgs) ? rawArgs.slice(1) : [];
     let customSlug = null;
-    let overridePaneId = null;
     let customDir = null;
     let customOutput = null;
-    const extraWeztermArgs = [];
+    let interactiveMode = false;
+    let windowMode = false;
+    let htmlMode = false;
 
     for (let index = 0; index < args.length; index += 1) {
         const option = args[index];
         if (!option) {
-            continue;
-        }
-        if (option === '--pane' || option === '--pane-id') {
-            overridePaneId = args[index + 1];
-            index += 1;
-            continue;
-        }
-        if (option.startsWith('--pane=')) {
-            overridePaneId = option.slice('--pane='.length);
-            continue;
-        }
-        if (option.startsWith('--pane-id=')) {
-            overridePaneId = option.slice('--pane-id='.length);
             continue;
         }
         if (option === '--dir') {
@@ -2286,11 +2279,22 @@ async function renderLastMessage(rawArgs = []) {
             customOutput = option.slice('--output='.length);
             continue;
         }
+        if (option === '--interactive' || option === '-i') {
+            interactiveMode = true;
+            continue;
+        }
+        if (option === '--window' || option === '-w') {
+            windowMode = true;
+            continue;
+        }
+        if (option === '--html') {
+            htmlMode = true;
+            continue;
+        }
         if (!customSlug && !option.startsWith('--')) {
             customSlug = option;
             continue;
         }
-        extraWeztermArgs.push(option);
     }
 
     const renderConfig = getRenderConfig();
@@ -2339,37 +2343,94 @@ async function renderLastMessage(rawArgs = []) {
         console.log(renderedBox);
     }
 
-    let paneId = overridePaneId
-        || renderConfig.paneId
-        || process.env.WEZTERM_PANE
-        || null;
+    // HTML mode - generate HTML file instead of screenshot
+    if (htmlMode) {
+        const convert = new Convert({
+            fg: '#FFF',
+            bg: '#000',
+            newline: true,
+            escapeXML: true,
+        });
 
-    if (!paneId && renderConfig.autoDetectPane !== false) {
-        try {
-            paneId = await detectWeztermPaneId(renderConfig.paneTitleHint);
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                logError('WezTerm CLI not found. Install WezTerm or set rendering.weztermExecutable.');
-                return conversation();
-            }
-            paneId = null;
+        const htmlContent = convert.toHtml(renderedBox);
+        const htmlTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLooI Render - ${lastMessage.role}</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.2;
+            margin: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
+        .container {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+${htmlContent}
+    </div>
+</body>
+</html>`;
+
+        const htmlOutputPath = outputPath.replace(/\.png$/, '.html');
+
+        try {
+            await writeFile(htmlOutputPath, htmlTemplate, 'utf8');
+            const relativePath = path.relative(process.cwd(), htmlOutputPath);
+            logSuccess(`HTML render saved to ${relativePath}`);
+
+            // Try to open in browser
+            const openCommand = process.platform === 'darwin' ? 'open' :
+                               process.platform === 'win32' ? 'start' : 'xdg-open';
+            try {
+                await runCommand(openCommand, [htmlOutputPath]);
+                logSuccess('Opened in browser');
+            } catch (error) {
+                logWarning(`Could not auto-open browser: ${error.message}`);
+            }
+
+        } catch (error) {
+            logError(`Failed to save HTML file: ${error.message}`);
+        }
+
+        return conversation();
     }
 
-    const screenshotArgs = Array.isArray(renderConfig.screenshotArgs)
-        ? renderConfig.screenshotArgs.filter(Boolean)
-        : [];
-    const weztermArgs = ['cli', 'screenshot', ...screenshotArgs, ...extraWeztermArgs];
-    if (paneId) {
-        weztermArgs.push('--pane-id', paneId);
+    // Build screencapture command
+    const screencaptureArgs = [
+        '-x', // no sounds
+        '-t', 'png', // PNG format
+    ];
+
+    if (interactiveMode) {
+        screencaptureArgs.push('-i'); // interactive mode
+    } else if (windowMode) {
+        screencaptureArgs.push('-w'); // window selection mode
+    } else {
+        // Default: try to capture the active window
+        screencaptureArgs.push('-w');
     }
-    weztermArgs.push('--output', outputPath);
+
+    screencaptureArgs.push(outputPath);
+
+    logSuccess(`Taking screenshot... ${interactiveMode ? 'Select area or window.' : windowMode ? 'Click on window to capture.' : 'Capturing active window.'}`);
 
     try {
-        await runWeztermCommand(weztermArgs);
+        await runCommand('screencapture', screencaptureArgs);
     } catch (error) {
         if (error.code === 'ENOENT') {
-            logError('WezTerm CLI not found. Install WezTerm to enable !render.');
+            logError('screencapture command not found. This feature requires macOS.');
         } else if (error.stderr) {
             logError(`Failed to capture screenshot: ${error.stderr.trim() || error.message}`);
         } else {
@@ -2379,7 +2440,7 @@ async function renderLastMessage(rawArgs = []) {
     }
 
     const relativePath = path.relative(process.cwd(), outputPath);
-    logSuccess(`Rendered PNG saved to ${relativePath}`);
+    logSuccess(`Screenshot saved to ${relativePath}`);
     return conversation();
 }
 

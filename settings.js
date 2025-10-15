@@ -104,6 +104,12 @@ export default {
         showSearches: false,
         conversationData: {},
 
+        // Rendering configuration
+        rendering: {
+            outputDir: './renders',
+            echo: true,
+        },
+
         // OpenRouter model + message options
         openRouterOptions: {
             modelOptions: {

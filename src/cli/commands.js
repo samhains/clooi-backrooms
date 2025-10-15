@@ -181,11 +181,11 @@ export default function buildCommands(api) {
             command: async args => printOrCopyData('print', args.slice(1)),
         },
         {
-            name: '!render - Save last message as PNG',
+            name: '!render - Save screenshot as PNG or HTML',
             value: '!render',
-            usage: '!render [slug] [--pane-id=<id>] [--dir=<path>] [--output=<path>]',
+            usage: '!render [slug] [--dir=<path>] [--output=<path>] [--interactive] [--window] [--html]',
             description:
-        'Capture the active WezTerm pane as a PNG and store it locally.\n\t[slug]: Optional filename fragment (defaults to role + message snippet).\n\t--pane-id: Override pane detection.\n\t--dir/--output: Override the destination directory or file path.',
+        'Capture a screenshot or generate HTML with full ANSI content.\n\t[slug]: Optional filename fragment (defaults to role + message snippet).\n\t--dir/--output: Override the destination directory or file path.\n\t--interactive/-i: Interactive selection mode.\n\t--window/-w: Window selection mode (default).\n\t--html: Generate HTML file with ANSI formatting (opens in browser).',
             available: hasConversationId,
             command: async args => renderLastMessage(args),
         },
