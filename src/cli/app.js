@@ -2578,12 +2578,14 @@ ${htmlContent}
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 14px;
             line-height: 1.2;
-            margin: 20px;
+            margin: 0;
             padding: 20px;
             white-space: pre-wrap;
             word-wrap: break-word;
-            width: 1200px;
+            /* Match Claude's terminal width: 82 chars * ~10px per char */
+            width: 820px;
             min-height: 100vh;
+            box-sizing: border-box;
         }
         .container {
             max-width: 100%;
