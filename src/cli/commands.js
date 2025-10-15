@@ -183,9 +183,9 @@ export default function buildCommands(api) {
         {
             name: '!render - Save screenshot as PNG or HTML',
             value: '!render',
-            usage: '!render [slug] [--dir=<path>] [--output=<path>] [--interactive] [--window] [--html]',
+            usage: '!render [slug] [--dir=<path>] [--output=<path>] [--interactive] [--window] [--html] [--conversation] [--index]',
             description:
-        'Capture a screenshot or generate HTML with full ANSI content.\n\t[slug]: Optional filename fragment (defaults to role + message snippet).\n\t--dir/--output: Override the destination directory or file path.\n\t--interactive/-i: Interactive selection mode.\n\t--window/-w: Window selection mode (default).\n\t--html: Generate HTML file with ANSI formatting (opens in browser).',
+        'Capture a screenshot or generate HTML with full ANSI content.\n\t[slug]: Optional filename fragment (defaults to role + message snippet).\n\t--dir/--output: Override the destination directory or file path.\n\t--interactive/-i: Interactive selection mode.\n\t--window/-w: Window selection mode (default).\n\t--html: Generate HTML file with ANSI formatting (opens in browser).\n\t--conversation/-c: Export entire conversation path as HTML (perfect for portfolios).\n\t--index: Generate portfolio index of all conversation renders.',
             available: hasConversationId,
             command: async args => renderLastMessage(args),
         },

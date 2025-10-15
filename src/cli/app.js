@@ -2255,6 +2255,8 @@ async function renderLastMessage(rawArgs = []) {
     let interactiveMode = false;
     let windowMode = false;
     let htmlMode = false;
+    let conversationMode = false;
+    let indexMode = false;
 
     for (let index = 0; index < args.length; index += 1) {
         const option = args[index];
@@ -2289,6 +2291,16 @@ async function renderLastMessage(rawArgs = []) {
         }
         if (option === '--html') {
             htmlMode = true;
+            continue;
+        }
+        if (option === '--conversation' || option === '-c') {
+            conversationMode = true;
+            htmlMode = true; // conversation mode implies HTML
+            continue;
+        }
+        if (option === '--index') {
+            indexMode = true;
+            htmlMode = true; // index mode implies HTML
             continue;
         }
         if (!customSlug && !option.startsWith('--')) {
@@ -2352,13 +2364,100 @@ async function renderLastMessage(rawArgs = []) {
             escapeXML: true,
         });
 
-        const htmlContent = convert.toHtml(renderedBox);
+        let htmlContent;
+        let title;
+
+        if (indexMode) {
+            // Generate portfolio index
+            title = 'CLooI Portfolio Index';
+
+            try {
+                const renderFiles = fs.readdirSync(resolvedDir)
+                    .filter(file => file.endsWith('.html') && file !== 'index.html')
+                    .map(file => {
+                        const filePath = path.join(resolvedDir, file);
+                        const stats = fs.statSync(filePath);
+                        return {
+                            filename: file,
+                            path: filePath,
+                            relativePath: file,
+                            created: stats.birthtime,
+                            modified: stats.mtime,
+                            size: stats.size
+                        };
+                    })
+                    .sort((a, b) => b.modified - a.modified);
+
+                const indexContent = `
+┌─ CLooI Portfolio Index ─────────────────────────────────────────────┐
+│ Generated: ${new Date().toISOString()}                              │
+│ Total Conversations: ${renderFiles.length}                                         │
+│ Location: ${resolvedDir}                                            │
+└─────────────────────────────────────────────────────────────────────┘
+
+Portfolio Contents:
+
+${renderFiles.map((file, i) => `
+${i + 1}. ${file.filename}
+   Created: ${file.created.toISOString()}
+   Modified: ${file.modified.toISOString()}
+   Size: ${(file.size / 1024).toFixed(1)} KB
+   Link: ./${file.relativePath}
+`).join('\n')}
+
+Click any filename above to view that conversation.
+`;
+
+                htmlContent = convert.toHtml(indexContent);
+
+                // Add clickable links in HTML
+                const linkifiedContent = htmlContent.replace(
+                    /Link: \.\/([^<\n]+)/g,
+                    '<a href="./$1" style="color: #4A9EFF; text-decoration: underline;">→ View Conversation</a>'
+                );
+                htmlContent = linkifiedContent;
+
+            } catch (error) {
+                logError(`Failed to scan render directory: ${error.message}`);
+                return conversation();
+            }
+        } else if (conversationMode) {
+            // Render entire conversation
+            const conversationId = getConversationId();
+            const conversationSummary = summarizeConversation(localConversation) || 'Conversation';
+
+            title = `CLooI Conversation - ${conversationSummary}`;
+
+            // Generate conversation header
+            const conversationHeader = `
+┌─ CLooI Conversation Export ─────────────────────────────────────────┐
+│ Conversation ID: ${conversationId || 'N/A'}                                        │
+│ Messages: ${messageHistory.length}                                                     │
+│ Exported: ${new Date().toISOString()}                              │
+│ Summary: ${conversationSummary}                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+`;
+
+            // Render all messages in the conversation
+            const conversationContent = messageHistory.map((message, index) => {
+                const messageBox = conversationMessageBox(message, displayContext, index);
+                return messageBox;
+            }).join('\n\n');
+
+            htmlContent = convert.toHtml(conversationHeader + conversationContent);
+        } else {
+            // Render single message
+            title = `CLooI Render - ${lastMessage.role}`;
+            htmlContent = convert.toHtml(renderedBox);
+        }
+
         const htmlTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLooI Render - ${lastMessage.role}</title>
+    <title>${title}</title>
     <style>
         body {
             background-color: #000;
@@ -2374,6 +2473,15 @@ async function renderLastMessage(rawArgs = []) {
             max-width: 100%;
             overflow-x: auto;
         }
+        .conversation-header {
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .message-separator {
+            margin: 30px 0;
+            border-top: 1px solid #333;
+        }
     </style>
 </head>
 <body>
@@ -2383,12 +2491,23 @@ ${htmlContent}
 </body>
 </html>`;
 
-        const htmlOutputPath = outputPath.replace(/\.png$/, '.html');
+        let htmlOutputPath = outputPath.replace(/\.png$/, '.html');
+
+        if (indexMode) {
+            htmlOutputPath = path.join(resolvedDir, 'index.html');
+        }
 
         try {
             await writeFile(htmlOutputPath, htmlTemplate, 'utf8');
             const relativePath = path.relative(process.cwd(), htmlOutputPath);
-            logSuccess(`HTML render saved to ${relativePath}`);
+
+            if (indexMode) {
+                logSuccess(`Portfolio index generated at ${relativePath}`);
+            } else if (conversationMode) {
+                logSuccess(`Conversation HTML exported to ${relativePath} (${messageHistory.length} messages)`);
+            } else {
+                logSuccess(`HTML render saved to ${relativePath}`);
+            }
 
             // Try to open in browser
             const openCommand = process.platform === 'darwin' ? 'open' :
