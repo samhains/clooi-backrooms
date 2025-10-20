@@ -7,6 +7,7 @@
     "form": "Emoji",
     "model1_company": "anthropic",
     "recurring_characters": "@file:recurring_characters_v3.json",
+    "static_is_rising": "@file:the_static_is_rising_vol_1_jan_2019.txt",
     "poetry": "@file:recurring_characters_v3.json",
     "prompt_guide": "@file:eagle_prompt_reference_v4.json"
   }
