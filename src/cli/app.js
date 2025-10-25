@@ -586,6 +586,7 @@ async function generateMessage() {
             for (const [key, text] of Object.entries(replies)) {
                 const simpleMessage = client.buildMessage(text.trim(), client.names.bot.author);
                 const conversationMessage = client.createConversationMessage(simpleMessage, parentMessageId);
+                newConversationMessages.push(conversationMessage);
                 if (parseInt(key, 10) === previewIdx) {
                     previewMessage = conversationMessage;
                 }
@@ -594,7 +595,7 @@ async function generateMessage() {
             await client.conversationsCache.set(conversationId, localConversation);
             // await pullFromCache();
 
-            return selectMessage(previewMessage.id, conversationId);
+            return previewMessage ? selectMessage(previewMessage.id, conversationId) : null;
         }
 
         // await pullFromCache();
